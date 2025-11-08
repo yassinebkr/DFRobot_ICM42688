@@ -215,7 +215,7 @@ class ICM42688:
         if self._use_spi:
             self._buffer[0] = register | 0x80  # Set read bit for SPI
             with self._spi as spi:
-                spi.write_readinto(self._buffer, self._buffer, end=2)
+                spi.write_readinto(self._buffer, self._buffer, out_end=2, in_end=2)
             return self._buffer[1]
         else:
             with self._i2c as i2c:
@@ -559,6 +559,12 @@ class ICM42688:
         time.sleep(reg.RESET_DELAY)
         self._current_bank = 0
 
+        # Reset internal state to defaults
+        self._accel_range = reg.ACCEL_RANGE_16G
+        self._gyro_range = reg.GYRO_RANGE_2000_DPS
+        self._accel_odr = reg.ODR_1KHZ
+        self._gyro_odr = reg.ODR_1KHZ
+
         # Re-initialize with default settings
         self._init_sensor()
 
@@ -870,9 +876,9 @@ class ICM42688:
         # WOM requires LP mode with ODR = 50Hz recommended
         self._set_bank(0)
 
-        # Set accel to 50Hz LP mode
+        # Set accel to 50Hz LP mode, turn off gyro to save power
         self.accelerometer_data_rate = reg.ODR_50HZ
-        self.set_power_mode(accel_mode=reg.ACCEL_MODE_LP)
+        self.set_power_mode(accel_mode=reg.ACCEL_MODE_LP, gyro_mode=reg.GYRO_MODE_OFF)
 
         # Switch to bank 4 to set thresholds
         self._set_bank(4)

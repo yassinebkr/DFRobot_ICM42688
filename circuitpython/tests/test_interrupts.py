@@ -134,8 +134,8 @@ def test_read_interrupt_status_fifo_threshold(icm, mock_i2c_device):
 
 def test_read_interrupt_status_wom_axes(icm, mock_i2c_device):
     """Test reading wake-on-motion interrupts for each axis."""
-    # Simulate WOM on all axes
-    mock_i2c_device.register_map[0x2D] = (
+    # Simulate WOM on all axes (INT_STATUS2 = 0x37)
+    mock_i2c_device.register_map[0x37] = (
         reg.INT_STATUS_WOM_X | reg.INT_STATUS_WOM_Y | reg.INT_STATUS_WOM_Z
     )
 
@@ -148,8 +148,8 @@ def test_read_interrupt_status_wom_axes(icm, mock_i2c_device):
 
 def test_read_interrupt_status_tap(icm, mock_i2c_device):
     """Test reading tap detection interrupt."""
-    # Set tap detection bit
-    mock_i2c_device.register_map[0x2D] = reg.INT_STATUS_TAP_DET
+    # Set tap detection bit (INT_STATUS3 = 0x38)
+    mock_i2c_device.register_map[0x38] = reg.INT_STATUS_TAP
 
     status = icm.read_interrupt_status()
 
@@ -158,8 +158,8 @@ def test_read_interrupt_status_tap(icm, mock_i2c_device):
 
 def test_read_interrupt_status_smd(icm, mock_i2c_device):
     """Test reading significant motion detection interrupt."""
-    # Set SMD bit
-    mock_i2c_device.register_map[0x2D] = reg.INT_STATUS_SMD
+    # Set SMD bit (INT_STATUS2 = 0x37)
+    mock_i2c_device.register_map[0x37] = reg.INT_STATUS_SMD
 
     status = icm.read_interrupt_status()
 
@@ -168,10 +168,10 @@ def test_read_interrupt_status_smd(icm, mock_i2c_device):
 
 def test_read_interrupt_status_multiple(icm, mock_i2c_device):
     """Test reading multiple simultaneous interrupts."""
-    # Set multiple interrupt bits
-    mock_i2c_device.register_map[0x2D] = (
-        reg.INT_STATUS_DRDY | reg.INT_STATUS_WOM_Z | reg.INT_STATUS_TAP_DET
-    )
+    # Set multiple interrupt bits in different registers
+    mock_i2c_device.register_map[0x2D] = reg.INT_STATUS_DRDY  # INT_STATUS
+    mock_i2c_device.register_map[0x37] = reg.INT_STATUS_WOM_Z  # INT_STATUS2
+    mock_i2c_device.register_map[0x38] = reg.INT_STATUS_TAP  # INT_STATUS3
 
     status = icm.read_interrupt_status()
 
@@ -262,7 +262,8 @@ def test_read_tap_info_double_tap(icm, mock_i2c_device):
     icm.enable_tap_detection(mode="low-noise", int_pin=1)
 
     # Simulate double tap on Z-axis, negative direction
-    mock_i2c_device.register_map[0x31] = 0x40  # Double tap bit set
+    # APEX_DATA4 = 0x35, TAP_DOUBLE = 0x10, TAP_AXIS_Z = 0x04
+    mock_i2c_device.register_map[0x35] = reg.TAP_DOUBLE | reg.TAP_AXIS_Z
 
     tap_info = icm.read_tap_info()
 

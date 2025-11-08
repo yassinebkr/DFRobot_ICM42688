@@ -115,8 +115,8 @@ def test_wom_detection_simulation(icm, mock_i2c_device):
     # Enable WOM
     icm.enable_wake_on_motion(threshold=50, axes="all", int_pin=1)
 
-    # Simulate motion on X-axis
-    mock_i2c_device.register_map[0x2D] = reg.INT_STATUS_WOM_X
+    # Simulate motion on X-axis (INT_STATUS2 = 0x37)
+    mock_i2c_device.register_map[0x37] = reg.INT_STATUS_WOM_X
 
     # Read interrupt status
     status = icm.read_interrupt_status()
@@ -173,8 +173,8 @@ def test_tap_detection_status(icm, mock_i2c_device):
     # Enable tap detection
     icm.enable_tap_detection(mode="low-noise", int_pin=1)
 
-    # Simulate tap interrupt
-    mock_i2c_device.register_map[0x2D] = reg.INT_STATUS_TAP_DET
+    # Simulate tap interrupt (INT_STATUS3 = 0x38)
+    mock_i2c_device.register_map[0x38] = reg.INT_STATUS_TAP
 
     # Read interrupt status
     status = icm.read_interrupt_status()
@@ -187,8 +187,8 @@ def test_read_tap_info_structure(icm, mock_i2c_device):
     # Enable tap detection
     icm.enable_tap_detection(mode="low-noise", int_pin=1)
 
-    # Simulate tap data in APEX_DATA4 register
-    mock_i2c_device.register_map[0x31] = 0x00  # Single tap, X-axis
+    # Simulate tap data in APEX_DATA4 register (0x35)
+    mock_i2c_device.register_map[0x35] = 0x00  # Single tap, X-axis
 
     tap_info = icm.read_tap_info()
 
@@ -213,7 +213,7 @@ def test_tap_info_single_tap(icm, mock_i2c_device):
     # Bit 3: Tap direction (0=negative, 1=positive)
 
     # Single tap on X-axis, positive direction
-    mock_i2c_device.register_map[0x31] = 0b00000000
+    mock_i2c_device.register_map[0x35] = 0b00000000
 
     tap_info = icm.read_tap_info()
     assert tap_info['count'] == 'single'
@@ -224,7 +224,7 @@ def test_tap_info_double_tap(icm, mock_i2c_device):
     icm.enable_tap_detection(mode="low-noise", int_pin=1)
 
     # Double tap on Y-axis
-    mock_i2c_device.register_map[0x31] = 0b01010000
+    mock_i2c_device.register_map[0x35] = 0b01010000
 
     tap_info = icm.read_tap_info()
     assert tap_info['count'] == 'double'
@@ -234,18 +234,18 @@ def test_tap_info_all_axes(icm, mock_i2c_device):
     """Test tap detection on all axes."""
     icm.enable_tap_detection(mode="low-noise", int_pin=1)
 
-    # Test X-axis
-    mock_i2c_device.register_map[0x31] = 0b00000000
+    # Test X-axis (bits 1-2 = 00)
+    mock_i2c_device.register_map[0x35] = reg.TAP_AXIS_X
     tap_info = icm.read_tap_info()
     assert tap_info['axis'] == 'x'
 
-    # Test Y-axis
-    mock_i2c_device.register_map[0x31] = 0b00010000
+    # Test Y-axis (bits 1-2 = 01, bit 1 set)
+    mock_i2c_device.register_map[0x35] = reg.TAP_AXIS_Y
     tap_info = icm.read_tap_info()
     assert tap_info['axis'] == 'y'
 
-    # Test Z-axis
-    mock_i2c_device.register_map[0x31] = 0b00100000
+    # Test Z-axis (bits 1-2 = 10, bit 2 set)
+    mock_i2c_device.register_map[0x35] = reg.TAP_AXIS_Z
     tap_info = icm.read_tap_info()
     assert tap_info['axis'] == 'z'
 
@@ -254,13 +254,13 @@ def test_tap_info_directions(icm, mock_i2c_device):
     """Test tap direction detection."""
     icm.enable_tap_detection(mode="low-noise", int_pin=1)
 
-    # Negative direction
-    mock_i2c_device.register_map[0x31] = 0b00000000
+    # Negative direction (bit 0 = 0)
+    mock_i2c_device.register_map[0x35] = 0b00000000
     tap_info = icm.read_tap_info()
     assert tap_info['direction'] is False
 
-    # Positive direction
-    mock_i2c_device.register_map[0x31] = 0b00001000
+    # Positive direction (bit 0 = 1)
+    mock_i2c_device.register_map[0x35] = 0b00000001
     tap_info = icm.read_tap_info()
     assert tap_info['direction'] is True
 
@@ -308,8 +308,8 @@ def test_smd_detection_status(icm, mock_i2c_device):
     # Enable SMD
     icm.enable_significant_motion_detection(mode="short", int_pin=1)
 
-    # Simulate SMD interrupt
-    mock_i2c_device.register_map[0x2D] = reg.INT_STATUS_SMD
+    # Simulate SMD interrupt (INT_STATUS2 = 0x37)
+    mock_i2c_device.register_map[0x37] = reg.INT_STATUS_SMD
 
     # Read interrupt status
     status = icm.read_interrupt_status()
@@ -322,15 +322,15 @@ def test_smd_with_wom_events(icm, mock_i2c_device):
     # Enable SMD
     icm.enable_significant_motion_detection(mode="short", int_pin=1)
 
-    # Simulate first WOM event (should not trigger SMD yet)
-    mock_i2c_device.register_map[0x2D] = reg.INT_STATUS_WOM_X
+    # Simulate first WOM event (should not trigger SMD yet) - INT_STATUS2 = 0x37
+    mock_i2c_device.register_map[0x37] = reg.INT_STATUS_WOM_X
 
     status = icm.read_interrupt_status()
     assert status['wom_x'] is True
     assert status['smd'] is False
 
     # Simulate second WOM event (would trigger SMD in real hardware)
-    mock_i2c_device.register_map[0x2D] = reg.INT_STATUS_WOM_X | reg.INT_STATUS_SMD
+    mock_i2c_device.register_map[0x37] = reg.INT_STATUS_WOM_X | reg.INT_STATUS_SMD
 
     status = icm.read_interrupt_status()
     assert status['smd'] is True
@@ -443,10 +443,9 @@ def test_motion_detection_after_reset(icm, mock_i2c_device):
 
 def test_multiple_motion_interrupts_simultaneous(icm, mock_i2c_device):
     """Test handling multiple motion interrupt types simultaneously."""
-    # Simulate multiple motion events
-    mock_i2c_device.register_map[0x2D] = (
-        reg.INT_STATUS_WOM_X | reg.INT_STATUS_WOM_Y | reg.INT_STATUS_TAP_DET
-    )
+    # Simulate multiple motion events in their respective registers
+    mock_i2c_device.register_map[0x37] = reg.INT_STATUS_WOM_X | reg.INT_STATUS_WOM_Y  # INT_STATUS2
+    mock_i2c_device.register_map[0x38] = reg.INT_STATUS_TAP  # INT_STATUS3
 
     status = icm.read_interrupt_status()
 

@@ -171,23 +171,21 @@ class MockSPIDevice:
             for i, value in enumerate(buffer[1:]):
                 self.register_map[reg + i] = value
 
-    def write_readinto(self, out_buffer, in_buffer, out_end=None, in_start=None, in_end=None):
+    def write_readinto(self, out_buffer, in_buffer, *, out_start=0, out_end=None, in_start=0, in_end=None):
         """Write and read from SPI device."""
         reg = out_buffer[0] & 0x7F  # Extract register address
         is_read = (out_buffer[0] & 0x80) != 0
 
         if is_read:
             # Read operation
-            if in_start is None:
-                in_start = 0
             if in_end is None:
                 in_end = len(in_buffer)
 
             # First byte is dummy for SPI reads
             in_buffer[0] = 0x00
 
-            # Read data from register map
-            for i in range(1, in_end):
+            # Read data from register map (starting from index 1)
+            for i in range(1, min(in_end, len(in_buffer))):
                 in_buffer[i] = self.register_map.get(reg + i - 1, 0x00)
 
 
@@ -292,8 +290,22 @@ def simulate_sensor_data(mock_device, accel_xyz, gyro_xyz, temp_c):
     mock_device.register_map[0x1D] = (temp_raw >> 8) & 0xFF
     mock_device.register_map[0x1E] = temp_raw & 0xFF
 
-    # Convert accelerometer (assume ±16g range, 2048 LSB/g)
-    accel_sensitivity = 2048.0
+    # Read current accelerometer range from ACCEL_CONFIG0 register (0x50)
+    accel_config0 = mock_device.register_map.get(0x50, 0x00)
+    accel_range = (accel_config0 >> 5) & 0x07  # Bits 5-7
+
+    # Get sensitivity based on current range
+    if accel_range == 0x00:  # ±16g
+        accel_sensitivity = reg.ACCEL_SENSITIVITY[reg.ACCEL_RANGE_16G]
+    elif accel_range == 0x01:  # ±8g
+        accel_sensitivity = reg.ACCEL_SENSITIVITY[reg.ACCEL_RANGE_8G]
+    elif accel_range == 0x02:  # ±4g
+        accel_sensitivity = reg.ACCEL_SENSITIVITY[reg.ACCEL_RANGE_4G]
+    elif accel_range == 0x03:  # ±2g
+        accel_sensitivity = reg.ACCEL_SENSITIVITY[reg.ACCEL_RANGE_2G]
+    else:
+        accel_sensitivity = 2048.0  # Default to ±16g
+
     ax_raw = int((accel_xyz[0] / reg.GRAVITY_EARTH) * accel_sensitivity)
     ay_raw = int((accel_xyz[1] / reg.GRAVITY_EARTH) * accel_sensitivity)
     az_raw = int((accel_xyz[2] / reg.GRAVITY_EARTH) * accel_sensitivity)
@@ -305,8 +317,22 @@ def simulate_sensor_data(mock_device, accel_xyz, gyro_xyz, temp_c):
     mock_device.register_map[0x23] = (az_raw >> 8) & 0xFF
     mock_device.register_map[0x24] = az_raw & 0xFF
 
-    # Convert gyroscope (assume ±2000dps range, 16.4 LSB/dps)
-    gyro_sensitivity = 16.4
+    # Read current gyroscope range from GYRO_CONFIG0 register (0x4F)
+    gyro_config0 = mock_device.register_map.get(0x4F, 0x00)
+    gyro_range = (gyro_config0 >> 5) & 0x07  # Bits 5-7
+
+    # Get sensitivity based on current range
+    if gyro_range == 0x00:  # ±2000 dps
+        gyro_sensitivity = reg.GYRO_SENSITIVITY[reg.GYRO_RANGE_2000_DPS]
+    elif gyro_range == 0x01:  # ±1000 dps
+        gyro_sensitivity = reg.GYRO_SENSITIVITY[reg.GYRO_RANGE_1000_DPS]
+    elif gyro_range == 0x02:  # ±500 dps
+        gyro_sensitivity = reg.GYRO_SENSITIVITY[reg.GYRO_RANGE_500_DPS]
+    elif gyro_range == 0x03:  # ±250 dps
+        gyro_sensitivity = reg.GYRO_SENSITIVITY[reg.GYRO_RANGE_250_DPS]
+    else:
+        gyro_sensitivity = 16.4  # Default to ±2000 dps
+
     gx_raw = int((gyro_xyz[0] / reg.DEG_TO_RAD) * gyro_sensitivity)
     gy_raw = int((gyro_xyz[1] / reg.DEG_TO_RAD) * gyro_sensitivity)
     gz_raw = int((gyro_xyz[2] / reg.DEG_TO_RAD) * gyro_sensitivity)
