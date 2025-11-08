@@ -12,7 +12,7 @@ from adafruit_icm42688 import registers as reg
 from conftest import get_register_value
 
 
-def test_set_accelerometer_range(icm, mock_i2c_device):
+def test_set_accelerometer_range(icm, mock_device):
     """Test setting accelerometer range."""
     # Test each valid range
     ranges = [
@@ -28,11 +28,11 @@ def test_set_accelerometer_range(icm, mock_i2c_device):
         assert icm._accel_range == range_val
 
         # Verify register was written correctly
-        config_reg = get_register_value(mock_i2c_device, 0x50)  # ACCEL_CONFIG0
+        config_reg = get_register_value(mock_device, 0x50)  # ACCEL_CONFIG0
         assert (config_reg >> 5) & 0x07 == range_val
 
 
-def test_set_gyro_range(icm, mock_i2c_device):
+def test_set_gyro_range(icm, mock_device):
     """Test setting gyroscope range."""
     # Test each valid range
     ranges = [
@@ -52,7 +52,7 @@ def test_set_gyro_range(icm, mock_i2c_device):
         assert icm._gyro_range == range_val
 
         # Verify register was written correctly
-        config_reg = get_register_value(mock_i2c_device, 0x4F)  # GYRO_CONFIG0
+        config_reg = get_register_value(mock_device, 0x4F)  # GYRO_CONFIG0
         assert (config_reg >> 5) & 0x07 == range_val
 
 
@@ -68,7 +68,7 @@ def test_invalid_gyro_range(icm):
         icm.gyro_range = 99  # Invalid range
 
 
-def test_set_accelerometer_odr(icm, mock_i2c_device):
+def test_set_accelerometer_odr(icm, mock_device):
     """Test setting accelerometer output data rate."""
     # Test various ODR values
     odr_values = [
@@ -85,11 +85,11 @@ def test_set_accelerometer_odr(icm, mock_i2c_device):
         assert icm._accel_odr == odr
 
         # Verify register was written correctly
-        config_reg = get_register_value(mock_i2c_device, 0x50)  # ACCEL_CONFIG0
+        config_reg = get_register_value(mock_device, 0x50)  # ACCEL_CONFIG0
         assert (config_reg & 0x0F) == odr
 
 
-def test_set_gyro_odr(icm, mock_i2c_device):
+def test_set_gyro_odr(icm, mock_device):
     """Test setting gyroscope output data rate."""
     # Test various ODR values
     odr_values = [
@@ -105,7 +105,7 @@ def test_set_gyro_odr(icm, mock_i2c_device):
         assert icm._gyro_odr == odr
 
         # Verify register was written correctly
-        config_reg = get_register_value(mock_i2c_device, 0x4F)  # GYRO_CONFIG0
+        config_reg = get_register_value(mock_device, 0x4F)  # GYRO_CONFIG0
         assert (config_reg & 0x0F) == odr
 
 
@@ -118,72 +118,72 @@ def test_invalid_odr(icm):
         icm.gyro_data_rate = 16  # Invalid
 
 
-def test_set_power_mode_accel_only(icm, mock_i2c_device):
+def test_set_power_mode_accel_only(icm, mock_device):
     """Test setting accelerometer power mode."""
     # Test low-power mode
     icm.set_power_mode(accel_mode=reg.ACCEL_MODE_LP)
 
-    pwr_reg = get_register_value(mock_i2c_device, 0x4E)  # PWR_MGMT0
+    pwr_reg = get_register_value(mock_device, 0x4E)  # PWR_MGMT0
     assert (pwr_reg & 0x03) == reg.ACCEL_MODE_LP
 
     # Test low-noise mode
     icm.set_power_mode(accel_mode=reg.ACCEL_MODE_LN)
 
-    pwr_reg = get_register_value(mock_i2c_device, 0x4E)
+    pwr_reg = get_register_value(mock_device, 0x4E)
     assert (pwr_reg & 0x03) == reg.ACCEL_MODE_LN
 
     # Test off mode
     icm.set_power_mode(accel_mode=reg.ACCEL_MODE_OFF)
 
-    pwr_reg = get_register_value(mock_i2c_device, 0x4E)
+    pwr_reg = get_register_value(mock_device, 0x4E)
     assert (pwr_reg & 0x03) == reg.ACCEL_MODE_OFF
 
 
-def test_set_power_mode_gyro_only(icm, mock_i2c_device):
+def test_set_power_mode_gyro_only(icm, mock_device):
     """Test setting gyroscope power mode."""
     # Test low-noise mode
     icm.set_power_mode(gyro_mode=reg.GYRO_MODE_LN)
 
-    pwr_reg = get_register_value(mock_i2c_device, 0x4E)  # PWR_MGMT0
+    pwr_reg = get_register_value(mock_device, 0x4E)  # PWR_MGMT0
     assert ((pwr_reg >> 2) & 0x03) == reg.GYRO_MODE_LN
 
     # Test standby mode
     icm.set_power_mode(gyro_mode=reg.GYRO_MODE_STANDBY)
 
-    pwr_reg = get_register_value(mock_i2c_device, 0x4E)
+    pwr_reg = get_register_value(mock_device, 0x4E)
     assert ((pwr_reg >> 2) & 0x03) == reg.GYRO_MODE_STANDBY
 
     # Test off mode
     icm.set_power_mode(gyro_mode=reg.GYRO_MODE_OFF)
 
-    pwr_reg = get_register_value(mock_i2c_device, 0x4E)
+    pwr_reg = get_register_value(mock_device, 0x4E)
     assert ((pwr_reg >> 2) & 0x03) == reg.GYRO_MODE_OFF
 
 
-def test_set_power_mode_both(icm, mock_i2c_device):
+def test_set_power_mode_both(icm, mock_device):
     """Test setting both accelerometer and gyroscope power modes."""
     icm.set_power_mode(
         accel_mode=reg.ACCEL_MODE_LN,
         gyro_mode=reg.GYRO_MODE_LN
     )
 
-    pwr_reg = get_register_value(mock_i2c_device, 0x4E)
+    pwr_reg = get_register_value(mock_device, 0x4E)
     assert (pwr_reg & 0x03) == reg.ACCEL_MODE_LN
     assert ((pwr_reg >> 2) & 0x03) == reg.GYRO_MODE_LN
 
 
-def test_set_power_mode_temp_control(icm, mock_i2c_device):
+def test_set_power_mode_temp_control(icm, mock_device):
     """Test temperature sensor enable/disable."""
     # Disable temperature sensor
     icm.set_power_mode(temp_enabled=False)
 
-    pwr_reg = get_register_value(mock_i2c_device, 0x4E)
+    pwr_reg = get_register_value(mock_device, 0x4E)
     assert (pwr_reg & reg.TEMP_DIS_BIT) != 0  # Bit should be set (disabled)
 
     # Enable temperature sensor
     icm.set_power_mode(temp_enabled=True)
 
-    pwr_reg = get_register_value(mock_i2c_device, 0x4E)
+    pwr_reg = get_register_value(mock_device, 0x4E)
     assert (pwr_reg & reg.TEMP_DIS_BIT) == 0  # Bit should be clear (enabled)
 
 
@@ -196,7 +196,7 @@ def test_invalid_power_mode(icm):
         icm.set_power_mode(gyro_mode=99)
 
 
-def test_range_affects_sensitivity(icm, mock_i2c_device):
+def test_range_affects_sensitivity(icm, mock_device):
     """Test that changing range affects sensitivity correctly."""
     from conftest import simulate_sensor_data
 
@@ -205,7 +205,7 @@ def test_range_affects_sensitivity(icm, mock_i2c_device):
 
     # Simulate 1g acceleration
     simulate_sensor_data(
-        mock_i2c_device,
+        mock_device,
         accel_xyz=(0.0, 0.0, 9.81),
         gyro_xyz=(0.0, 0.0, 0.0),
         temp_c=25.0
@@ -218,7 +218,7 @@ def test_range_affects_sensitivity(icm, mock_i2c_device):
 
     # Same 1g acceleration, but with different sensitivity
     simulate_sensor_data(
-        mock_i2c_device,
+        mock_device,
         accel_xyz=(0.0, 0.0, 9.81),
         gyro_xyz=(0.0, 0.0, 0.0),
         temp_c=25.0
@@ -232,7 +232,7 @@ def test_range_affects_sensitivity(icm, mock_i2c_device):
     assert abs(accel2[2] - 9.81) < 0.5
 
 
-def test_config_persistence(icm, mock_i2c_device):
+def test_config_persistence(icm, mock_device):
     """Test that configuration persists across reads."""
     # Set configuration
     icm.accelerometer_range = reg.ACCEL_RANGE_4G
@@ -252,7 +252,7 @@ def test_config_persistence(icm, mock_i2c_device):
     assert icm.gyro_data_rate == reg.ODR_200HZ
 
 
-def test_multiple_config_changes(icm, mock_i2c_device):
+def test_multiple_config_changes(icm, mock_device):
     """Test multiple configuration changes in sequence."""
     # Change configuration multiple times
     for range_val in [reg.ACCEL_RANGE_2G, reg.ACCEL_RANGE_4G, reg.ACCEL_RANGE_8G, reg.ACCEL_RANGE_16G]:
@@ -264,7 +264,7 @@ def test_multiple_config_changes(icm, mock_i2c_device):
         assert len(accel) == 3
 
 
-def test_config_after_reset(icm, mock_i2c_device):
+def test_config_after_reset(icm, mock_device):
     """Test that reset restores default configuration."""
     # Change configuration
     icm.accelerometer_range = reg.ACCEL_RANGE_2G

@@ -42,11 +42,11 @@ def test_wrong_chip_id(mock_i2c_device, mock_i2c, monkeypatch):
         ICM42688(mock_i2c, address=0x69)
 
 
-def test_read_acceleration(icm, mock_i2c_device):
+def test_read_acceleration(icm, mock_device):
     """Test reading acceleration data."""
     # Simulate 1g on Z axis (sensor at rest, upright)
     simulate_sensor_data(
-        mock_i2c_device,
+        mock_device,
         accel_xyz=(0.0, 0.0, 9.81),  # m/s²
         gyro_xyz=(0.0, 0.0, 0.0),
         temp_c=25.0
@@ -60,14 +60,14 @@ def test_read_acceleration(icm, mock_i2c_device):
     assert abs(accel_z - 9.81) < 0.5
 
 
-def test_read_gyro(icm, mock_i2c_device):
+def test_read_gyro(icm, mock_device):
     """Test reading gyroscope data."""
     # Simulate 100 deg/s rotation on X axis
     rotation_dps = 100.0
     rotation_rads = rotation_dps * (3.14159 / 180.0)
 
     simulate_sensor_data(
-        mock_i2c_device,
+        mock_device,
         accel_xyz=(0.0, 0.0, 9.81),
         gyro_xyz=(rotation_rads, 0.0, 0.0),  # rad/s
         temp_c=25.0
@@ -81,11 +81,11 @@ def test_read_gyro(icm, mock_i2c_device):
     assert abs(gyro_z - 0.0) < 0.1
 
 
-def test_read_temperature(icm, mock_i2c_device):
+def test_read_temperature(icm, mock_device):
     """Test reading temperature data."""
     # Simulate 30°C
     simulate_sensor_data(
-        mock_i2c_device,
+        mock_device,
         accel_xyz=(0.0, 0.0, 9.81),
         gyro_xyz=(0.0, 0.0, 0.0),
         temp_c=30.0
@@ -97,11 +97,11 @@ def test_read_temperature(icm, mock_i2c_device):
     assert abs(temp - 30.0) < 1.0
 
 
-def test_read_all_sensors(icm, mock_i2c_device):
+def test_read_all_sensors(icm, mock_device):
     """Test reading all sensors at once."""
     # Simulate realistic sensor data
     simulate_sensor_data(
-        mock_i2c_device,
+        mock_device,
         accel_xyz=(0.5, -0.3, 9.81),  # m/s²
         gyro_xyz=(0.1, -0.05, 0.0),  # rad/s
         temp_c=28.5
@@ -122,10 +122,10 @@ def test_read_all_sensors(icm, mock_i2c_device):
     assert abs(accel_mag - 9.81) < 1.0
 
 
-def test_reset(icm, mock_i2c_device):
+def test_reset(icm, mock_device):
     """Test soft reset functionality."""
     # Change a register
-    mock_i2c_device.register_map[0x4E] = 0xFF
+    mock_device.register_map[0x4E] = 0xFF
 
     # Perform reset
     icm.reset()
@@ -136,7 +136,7 @@ def test_reset(icm, mock_i2c_device):
     assert icm._current_bank == 0
 
 
-def test_sensor_data_units(icm, mock_i2c_device):
+def test_sensor_data_units(icm, mock_device):
     """Test that sensor data is returned in correct SI units."""
     # Simulate known values
     accel_expected = (1.0, 2.0, 9.81)  # m/s²
@@ -144,7 +144,7 @@ def test_sensor_data_units(icm, mock_i2c_device):
     temp_expected = 25.0  # °C
 
     simulate_sensor_data(
-        mock_i2c_device,
+        mock_device,
         accel_xyz=accel_expected,
         gyro_xyz=gyro_expected,
         temp_c=temp_expected
@@ -166,11 +166,11 @@ def test_sensor_data_units(icm, mock_i2c_device):
     assert 0.0 < temp < 50.0  # Reasonable range for °C
 
 
-def test_multiple_reads(icm, mock_i2c_device):
+def test_multiple_reads(icm, mock_device):
     """Test multiple sequential sensor reads."""
     # Simulate sensor data
     simulate_sensor_data(
-        mock_i2c_device,
+        mock_device,
         accel_xyz=(0.0, 0.0, 9.81),
         gyro_xyz=(0.0, 0.0, 0.0),
         temp_c=25.0
@@ -188,7 +188,7 @@ def test_multiple_reads(icm, mock_i2c_device):
         assert isinstance(temp, float)
 
 
-def test_bank_switching(icm, mock_i2c_device):
+def test_bank_switching(icm, mock_device):
     """Test register bank switching."""
     # Initially should be in bank 0
     assert icm._current_bank == 0
@@ -196,30 +196,30 @@ def test_bank_switching(icm, mock_i2c_device):
     # Switch to bank 1
     icm._set_bank(1)
     assert icm._current_bank == 1
-    assert mock_i2c_device.register_map[0x76] == 1
+    assert mock_device.register_map[0x76] == 1
 
     # Switch to bank 4
     icm._set_bank(4)
     assert icm._current_bank == 4
-    assert mock_i2c_device.register_map[0x76] == 4
+    assert mock_device.register_map[0x76] == 4
 
     # Switch back to bank 0
     icm._set_bank(0)
     assert icm._current_bank == 0
-    assert mock_i2c_device.register_map[0x76] == 0
+    assert mock_device.register_map[0x76] == 0
 
 
-def test_bank_switching_optimization(icm, mock_i2c_device):
+def test_bank_switching_optimization(icm, mock_device):
     """Test that bank switching is optimized (doesn't switch if already there)."""
     # Set to bank 1
     icm._set_bank(1)
-    register_writes_before = mock_i2c_device.register_map.copy()
+    register_writes_before = mock_device.register_map.copy()
 
     # Try to switch to bank 1 again
     icm._set_bank(1)
 
     # Register map should be unchanged (no unnecessary write)
-    assert mock_i2c_device.register_map == register_writes_before
+    assert mock_device.register_map == register_writes_before
 
 
 def test_invalid_bank(icm):

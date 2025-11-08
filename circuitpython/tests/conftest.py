@@ -212,11 +212,20 @@ def mock_spi_device(monkeypatch):
     """Provide a mock SPI device."""
     mock_device = MockSPIDevice(None, None)
 
-    # Patch the SPIDevice class
-    monkeypatch.setattr(
-        'adafruit_bus_device.spi_device.SPIDevice',
-        lambda spi, cs, baudrate, polarity, phase: mock_device
-    )
+    # Patch SPIDevice in the spi_device module
+    from adafruit_bus_device import spi_device
+
+    def mock_spi_constructor(spi, cs, **kwargs):
+        return mock_device
+
+    # Patch the module
+    spi_device.SPIDevice = mock_spi_constructor
+
+    # CRITICAL: Also patch it in the library's namespace
+    # The library does: from adafruit_bus_device import spi_device
+    # So it has its own reference to the spi_device module
+    import adafruit_icm42688
+    adafruit_icm42688.spi_device.SPIDevice = mock_spi_constructor
 
     return mock_device
 
@@ -232,8 +241,7 @@ def mock_i2c():
 @pytest.fixture
 def mock_spi():
     """Provide a mock SPI bus."""
-    spi = Mock()
-    spi.configure = Mock()
+    spi = Mock(spec=['configure'])  # Only allow 'configure' attribute, not 'writeto'
     return spi
 
 
@@ -268,6 +276,55 @@ def icm(request, icm_i2c, icm_spi):
         return icm_i2c
     else:
         return icm_spi
+
+
+@pytest.fixture
+def mock_device(request, mock_i2c_device, mock_spi_device):
+    """
+    Provide the appropriate mock device based on the 'icm' fixture's communication interface.
+
+    This fixture detects which variant of the parametrized 'icm' fixture is being used
+    and returns the matching mock device. This ensures tests receive the correct mock:
+    - When icm=icm_i2c, returns mock_i2c_device
+    - When icm=icm_spi, returns mock_spi_device
+
+    This avoids the Cartesian product issue that would occur if both fixtures were
+    parametrized independently.
+
+    :param request: Pytest request object
+    :param mock_i2c_device: Mock I2C device instance
+    :param mock_spi_device: Mock SPI device instance
+    :return: mock_i2c_device or mock_spi_device based on icm fixture variant
+    """
+    # Get the param value from the 'icm' fixture if it's being used
+    if hasattr(request, 'param'):
+        # This shouldn't happen since we removed params from this fixture
+        # but keep for safety
+        interface_type = request.param
+    else:
+        # Check which variant of 'icm' is being used by looking at the test node
+        interface_type = None
+        for item in request.node.callspec.params.values():
+            # Check if this is an I2C or SPI ICM instance
+            if hasattr(item, '_use_spi'):
+                interface_type = 'spi' if item._use_spi else 'i2c'
+                break
+
+        # Fallback: check the parametrize id from the icm fixture
+        if interface_type is None and hasattr(request.node, 'callspec'):
+            if 'icm' in request.node.callspec.params:
+                # Get the parametrize id for icm
+                if hasattr(request.node.callspec, 'id'):
+                    if 'spi' in request.node.callspec.id:
+                        interface_type = 'spi'
+                    elif 'i2c' in request.node.callspec.id:
+                        interface_type = 'i2c'
+
+    # Return the appropriate mock device
+    if interface_type == 'spi':
+        return mock_spi_device
+    else:
+        return mock_i2c_device
 
 
 # ========================================================================
