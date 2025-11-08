@@ -749,6 +749,12 @@ class ICM42688:
         """
         if pin not in (1, 2):
             raise ValueError("Pin must be 1 or 2")
+        if polarity not in ("high", "low"):
+            raise ValueError("Polarity must be 'high' or 'low'")
+        if mode not in ("pulse", "latch"):
+            raise ValueError("Mode must be 'latch' or 'pulse'")
+        if drive not in ("push-pull", "open-drain"):
+            raise ValueError("Drive must be 'push-pull' or 'open-drain'")
 
         self._set_bank(0)
 
@@ -811,10 +817,14 @@ class ICM42688:
         self._set_bank(0)
 
         # Read interrupt status registers (reading clears them)
+        status = self._read_register_byte(reg.REG_INT_STATUS)
         status2 = self._read_register_byte(reg.REG_INT_STATUS2)
         status3 = self._read_register_byte(reg.REG_INT_STATUS3)
 
         return {
+            'data_ready': bool(status & reg.INT_STATUS_DRDY),
+            'fifo_threshold': bool(status & reg.INT_STATUS_FIFO_THS),
+            'fifo_full': bool(status & reg.INT_STATUS_FIFO_FULL),
             'wom_x': bool(status2 & reg.INT_STATUS_WOM_X),
             'wom_y': bool(status2 & reg.INT_STATUS_WOM_Y),
             'wom_z': bool(status2 & reg.INT_STATUS_WOM_Z),
@@ -851,6 +861,10 @@ class ICM42688:
         """
         if threshold < 0 or threshold > 255:
             raise ValueError("Threshold must be 0-255")
+        if axes not in ("x", "y", "z", "all"):
+            raise ValueError("Axes must be 'x', 'y', 'z', or 'all'")
+        if int_pin not in (1, 2):
+            raise ValueError("Pin must be 1 or 2")
 
         # Configure accelerometer for wake-on-motion
         # WOM requires LP mode with ODR = 50Hz recommended
@@ -912,6 +926,11 @@ class ICM42688:
                 tap_info = icm.read_tap_info()
                 print(f"Tap: {tap_info['count']} on axis {tap_info['axis']}")
         """
+        if mode not in ("low-noise", "low-power"):
+            raise ValueError("Mode must be 'low-noise' or 'low-power'")
+        if int_pin not in (1, 2):
+            raise ValueError("Pin must be 1 or 2")
+
         self._set_bank(0)
 
         # Configure accelerometer for tap detection
@@ -985,7 +1004,7 @@ class ICM42688:
         else:
             axis = "z"
 
-        direction = data & reg.TAP_DIR_MASK
+        direction = bool(data & reg.TAP_DIR_MASK)
 
         return {
             'count': tap_count,
@@ -1012,6 +1031,11 @@ class ICM42688:
 
             icm.enable_significant_motion_detection(mode="short", int_pin=1)
         """
+        if mode not in ("short", "long"):
+            raise ValueError("Mode must be 'short' or 'long'")
+        if int_pin not in (1, 2):
+            raise ValueError("Pin must be 1 or 2")
+
         # First configure wake-on-motion (SMD requires WOM)
         self.enable_wake_on_motion(threshold=50, axes="all", int_pin=int_pin)
 

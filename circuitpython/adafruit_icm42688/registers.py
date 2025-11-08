@@ -208,17 +208,29 @@ FIFO_HIRES_EN = 0x10  # Enable high-resolution mode (bit 4)
 # INT_CONFIG bit fields (0x14)
 INT1_POLARITY_LOW = 0x00  # INT1 active low
 INT1_POLARITY_HIGH = 0x01  # INT1 active high (bit 0)
+INT1_POLARITY = 0x01  # Alias for INT1_POLARITY_HIGH
 INT1_DRIVE_OD = 0x00  # INT1 open-drain
 INT1_DRIVE_PP = 0x02  # INT1 push-pull (bit 1)
+INT1_DRIVE_CIRCUIT = 0x02  # Alias for INT1_DRIVE_PP
 INT1_MODE_PULSE = 0x00  # INT1 pulse mode
 INT1_MODE_LATCH = 0x04  # INT1 latched mode (bit 2)
+INT1_MODE = 0x04  # Alias for INT1_MODE_LATCH
 
 INT2_POLARITY_LOW = 0x00  # INT2 active low
 INT2_POLARITY_HIGH = 0x08  # INT2 active high (bit 3)
+INT2_POLARITY = 0x08  # Alias for INT2_POLARITY_HIGH
 INT2_DRIVE_OD = 0x00  # INT2 open-drain
 INT2_DRIVE_PP = 0x10  # INT2 push-pull (bit 4)
+INT2_DRIVE_CIRCUIT = 0x10  # Alias for INT2_DRIVE_PP
 INT2_MODE_PULSE = 0x00  # INT2 pulse mode
 INT2_MODE_LATCH = 0x20  # INT2 latched mode (bit 5)
+INT2_MODE = 0x20  # Alias for INT2_MODE_LATCH
+
+# Interrupt status bits (INT_STATUS - 0x2D)
+INT_STATUS_DRDY = 0x01  # Data ready (bit 0)
+INT_STATUS_FIFO_THS = 0x04  # FIFO threshold reached (bit 2)
+INT_STATUS_FIFO_FULL = 0x08  # FIFO full (bit 3)
+INT_STATUS_AGC_RDY = 0x10  # AGC ready (bit 4)
 
 # Interrupt status bits (INT_STATUS2 - 0x37)
 INT_STATUS_WOM_X = 0x01  # Wake-on-motion X (bit 0)
