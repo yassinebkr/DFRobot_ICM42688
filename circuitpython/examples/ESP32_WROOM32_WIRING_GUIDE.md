@@ -70,10 +70,12 @@ SPI Default Pins:
 ### Standard I2C Connection
 
 ```
-ICM42688 Breakout          ESP32-WROOM-32 DevKit (Your Board)
+ICM42688P Board            ESP32-WROOM-32 DevKit (Your Board)
+(Your specific board)
 ┌────────────────┐         ┌──────────────────────────────┐
 │                │         │                              │
-│  VCC/VDD  ○────┼─────────┤ RIGHT Pin 40 (3V3)           │
+│  5V       ○────┼─────────┤ RIGHT Pin 40 (3V3)           │
+│  (labeled "5V")│         │ ← Connect to 3V3, NOT 5V!    │
 │  GND      ○────┼─────────┤ LEFT Pin 1,7,20 or RIGHT 21,23,27 (GND) │
 │  SDA      ○────┼─────────┤ LEFT Pin 6 (P21)             │
 │  SCL      ○────┼─────────┤ LEFT Pin 3 (P22)             │
@@ -88,13 +90,13 @@ ICM42688 Breakout          ESP32-WROOM-32 DevKit (Your Board)
 └────────────────┘         └──────────────────────────────┘
 
 Connections:
-  VCC     → 3V3   (RIGHT side, Pin 40 - top pin)
-  GND     → GND   (Multiple: LEFT 1,7,20  RIGHT 21,23,27)
-  SDA     → P21   (LEFT side, Pin 6)
-  SCL     → P22   (LEFT side, Pin 3)
-  INT1    → P23   (LEFT side, Pin 2) - Optional
-  INT2    → P19   (LEFT side, Pin 8) - Optional
-  SDO/AD0 → 3V3   (Address 0x69) or GND (Address 0x68)
+  "5V" pin → 3V3   (RIGHT side, Pin 40) ← Board accepts 3.3V despite "5V" label
+  GND      → GND   (Multiple: LEFT 1,7,20  RIGHT 21,23,27)
+  SDA      → P21   (LEFT side, Pin 6)
+  SCL      → P22   (LEFT side, Pin 3)
+  INT1     → P23   (LEFT side, Pin 2) - Optional
+  INT2     → P19   (LEFT side, Pin 8) - Optional
+  SDO/AD0  → 3V3   (Address 0x69) or GND (Address 0x68)
 ```
 
 ### I2C Pin Details
@@ -103,7 +105,7 @@ Connections:
 |----------|------|--------------|------|-------|
 | SDA | GPIO21 (P21) | Pin 6 | LEFT | Default I2C Data |
 | SCL | GPIO22 (P22) | Pin 3 | LEFT | Default I2C Clock |
-| Power | 3.3V (3V3) | Pin 40 | RIGHT | **NEVER USE 5V!** |
+| Power | 3.3V (3V3) | Pin 40 | RIGHT | **Connect ICM42688P "5V" pin here (board has regulator)** |
 | Ground | GND | Pins 1,7,20 (LEFT) or 21,23,27 (RIGHT) | Both | Multiple GND pins available |
 
 **I2C Frequency Options:**
@@ -122,10 +124,12 @@ Connections:
 ### VSPI Connection (Default Hardware SPI)
 
 ```
-ICM42688 Breakout          ESP32-WROOM-32 DevKit (Your Board)
+ICM42688P Board            ESP32-WROOM-32 DevKit (Your Board)
+(Your specific board)
 ┌────────────────┐         ┌────────────────────────────┐
 │                │         │                            │
-│  VCC      ○────┼─────────┤ RIGHT Pin 40 (3V3)         │
+│  5V       ○────┼─────────┤ RIGHT Pin 40 (3V3)         │
+│  (labeled "5V")│         │ ← Connect to 3V3!          │
 │  GND      ○────┼─────────┤ LEFT Pin 1,7,20 or RIGHT 21,23,27 (GND) │
 │  MOSI/SDI ○────┼─────────┤ LEFT Pin 2 (P23/MOSI)      │
 │  MISO/SDO ○────┼─────────┤ LEFT Pin 8 (P19/MISO)      │
@@ -137,7 +141,7 @@ ICM42688 Breakout          ESP32-WROOM-32 DevKit (Your Board)
 └────────────────┘         └────────────────────────────┘
 
 Connections:
-  VCC      → 3V3  (RIGHT Pin 40)
+  "5V" pin → 3V3  (RIGHT Pin 40) ← Despite label, connect to 3.3V
   GND      → GND  (LEFT 1,7,20 or RIGHT 21,23,27)
   MOSI/SDI → P23  (LEFT Pin 2)
   MISO/SDO → P19  (LEFT Pin 8)
@@ -176,12 +180,12 @@ Connections:
 ### Breadboard Layout (I2C)
 
 ```
-    ESP32-WROOM-32                    ICM42688
-    DevKit (40-pin)                   Breakout
+    ESP32-WROOM-32                    ICM42688P Board
+    DevKit (40-pin)                   (Your specific board)
     Your Board
 
-    RIGHT Pin 40 (3V3) ──────┬─────────── VCC
-                             │
+    RIGHT Pin 40 (3V3) ──────┬─────────── "5V" pin (labeled 5V)
+                             │           (accepts 3.3V input)
     LEFT  Pin 6  (P21) ──────┼─────────── SDA
                              │
     LEFT  Pin 3  (P22) ──────┼─────────── SCL
@@ -190,12 +194,12 @@ Connections:
 
 
 Connect on breadboard:
-  RIGHT Pin 40:  3V3   → Red power rail
-  LEFT Pin 1:    GND   → Blue/Black ground rail
-  LEFT Pin 6:    P21   → ICM42688 SDA
-  LEFT Pin 3:    P22   → ICM42688 SCL
-  ICM42688 VCC:        → Red power rail
-  ICM42688 GND:        → Ground rail
+  RIGHT Pin 40:     3V3   → Red power rail
+  LEFT Pin 1:       GND   → Blue/Black ground rail
+  LEFT Pin 6:       P21   → ICM42688P SDA
+  LEFT Pin 3:       P22   → ICM42688P SCL
+  ICM42688P "5V":         → Red power rail (3.3V)
+  ICM42688P GND:          → Ground rail
 ```
 
 ### Soldered Connection Recommendations

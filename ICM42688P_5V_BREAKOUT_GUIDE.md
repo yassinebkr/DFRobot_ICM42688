@@ -175,7 +175,7 @@ If signals are 5V, you need **level shifters** between board and ESP32.
 ```
 ICM42688P Pin          ESP32-WROOM-32 Pin (Your Board)
 ─────────────          ─────────────────────────────────
-V                 ───► 3V3 (RIGHT Pin 40)
+"5V" (labeled 5V) ───► 3V3 (RIGHT Pin 40) ← Connect to 3.3V!
 GND               ───► GND (LEFT Pin 1, 7, or 20)
 SDA/MOSI/AD0/MISO ───► P21 (LEFT Pin 6) - I2C Data
 SCL/SCLK          ───► P22 (LEFT Pin 3) - I2C Clock
@@ -196,7 +196,8 @@ INT2              ───► (Leave disconnected for now)
    SCL   ○ ─────────────────────► LEFT Pin 3 (P22)
    SDA   ○ ─────────────────────► LEFT Pin 6 (P21)
    GND   ○ ─────────────────────► LEFT Pin 1 (GND)
-   V     ○ ─────────────────────► RIGHT Pin 40 (3V3)
+   "5V"  ○ ─────────────────────► RIGHT Pin 40 (3V3) ← "5V" pin to 3V3!
+   (labeled 5V)
 ```
 
 ### I2C Address
@@ -383,7 +384,7 @@ Add a **bidirectional I2C level shifter** between board and ESP32:
 3. If 5V, use level shifters
 
 **SAFE CONNECTION (Your Board):**
-- V → ESP32 3V3 (RIGHT Pin 40)
+- "5V" pin (labeled "5V") → ESP32 3V3 (RIGHT Pin 40) ← Connect to 3.3V!
 - GND → ESP32 GND (LEFT Pin 1, 7, or 20)
 - SDA/MOSI/AD0/MISO → P21 (LEFT Pin 6)
 - SCL/SCLK → P22 (LEFT Pin 3)

@@ -140,22 +140,22 @@ https://github.com/adafruit/Adafruit_CircuitPython_Bundle/releases
 ### I2C Wiring (Recommended)
 
 ```
-ICM42688          ESP32-WROOM-32 (Your Board)
-────────          ───────────────────────────
-VCC      ────────  3V3  (RIGHT Pin 40)
-GND      ────────  GND  (LEFT Pin 1, 7, or 20)
-SDA      ────────  P21  (LEFT Pin 6)
-SCL      ────────  P22  (LEFT Pin 3)
+ICM42688P Board   ESP32-WROOM-32 (Your Board)
+───────────────   ───────────────────────────
+5V (pin label)──  3V3  (RIGHT Pin 40)  ← Connect board's "5V" pin to ESP32's 3V3!
+GND           ──  GND  (LEFT Pin 1, 7, or 20)
+SDA           ──  P21  (LEFT Pin 6)
+SCL           ──  P22  (LEFT Pin 3)
 ```
 
-**CRITICAL:** Use 3V3 only! Never 5V!
+**CRITICAL:** Despite the "5V" label on the ICM42688P board, connect it to ESP32's **3V3 pin** (the board has an onboard voltage regulator that accepts 3.3V-5V input).
 
 ### Visual Reference
 
 ```
-ESP32 (Your Board)            ICM42688
+ESP32 (Your Board)            ICM42688P Board
   ┌──────────────┐
-  │ RIGHT Pin 40 │ 3V3 ────────── VCC
+  │ RIGHT Pin 40 │ 3V3 ────────── "5V" pin (labeled 5V, accepts 3.3V)
   │ LEFT  Pin 1  │ GND ────────── GND
   │ LEFT  Pin 6  │ P21 ────────── SDA
   │ LEFT  Pin 3  │ P22 ────────── SCL
@@ -275,8 +275,8 @@ accel = icm.acceleration
 ### Problem: No I2C devices found
 
 **Check:**
-1. Wiring: VCC=3V3 (RIGHT Pin 40), GND=GND (LEFT Pin 1), SDA=P21 (LEFT Pin 6), SCL=P22 (LEFT Pin 3)
-2. Power LED on ICM42688 (if available)
+1. Wiring: ICM42688P "5V" pin to ESP32 3V3 (RIGHT Pin 40), GND to GND (LEFT Pin 1), SDA to P21 (LEFT Pin 6), SCL to P22 (LEFT Pin 3)
+2. Power LED on ICM42688P board (if available)
 3. Try different I2C address: `ICM42688(i2c, address=0x68)`
 4. Lower I2C speed: `I2C(scl=board.IO22, sda=board.IO21, frequency=100000)`
 
