@@ -52,10 +52,10 @@ Take a photo if unsure!
 2. ONLY connect power and ground
 
 ```
-ICM42688P Board     ESP32-WROOM-32
-───────────────     ──────────────
-V (5V pin)     ──── 3.3V (Pin 1)    ← Power input
-GND            ──── GND (Pin 14)    ← Ground
+ICM42688P Board     ESP32-WROOM-32 (Your Board)
+───────────────     ───────────────────────────
+V (5V pin)     ──── 3V3 (RIGHT Pin 40)    ← Power input
+GND            ──── GND (LEFT Pin 1)      ← Ground
 (All other pins disconnected)
 ```
 
@@ -285,12 +285,12 @@ ICM42688P → [Level Shifter HV side] → [Level Shifter LV side] → ESP32
 
 **Full wiring:**
 ```
-ICM42688P Pin          ESP32 Pin
-─────────────          ─────────
-V                 ──── 3.3V (Pin 1)
-GND               ──── GND (Pin 14)
-SDA/MOSI/AD0/MISO ──── IO21 (Pin 34)
-SCL/SCLK          ──── IO22 (Pin 37)
+ICM42688P Pin          ESP32 Pin (Your Board)
+─────────────          ──────────────────────
+V                 ──── 3V3 (RIGHT Pin 40)
+GND               ──── GND (LEFT Pin 1, 7, or 20)
+SDA/MOSI/AD0/MISO ──── P21 (LEFT Pin 6)
+SCL/SCLK          ──── P22 (LEFT Pin 3)
 CS                ──── (floating - not connected)
 INT1              ──── (optional - leave for now)
 INT2              ──── (optional - leave for now)

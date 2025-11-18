@@ -140,26 +140,26 @@ https://github.com/adafruit/Adafruit_CircuitPython_Bundle/releases
 ### I2C Wiring (Recommended)
 
 ```
-ICM42688          ESP32-WROOM-32
-────────          ──────────────
-VCC      ────────  3.3V  (Pin 1)
-GND      ────────  GND   (Pin 14 or 20)
-SDA      ────────  IO21  (Pin 34)
-SCL      ────────  IO22  (Pin 37)
+ICM42688          ESP32-WROOM-32 (Your Board)
+────────          ───────────────────────────
+VCC      ────────  3V3  (RIGHT Pin 40)
+GND      ────────  GND  (LEFT Pin 1, 7, or 20)
+SDA      ────────  P21  (LEFT Pin 6)
+SCL      ────────  P22  (LEFT Pin 3)
 ```
 
-**CRITICAL:** Use 3.3V only! Never 5V!
+**CRITICAL:** Use 3V3 only! Never 5V!
 
 ### Visual Reference
 
 ```
-ESP32 (Top View)              ICM42688
-  ┌─────────┐
-  │  Pin 1  │ 3.3V ────────── VCC
-  │  Pin 14 │ GND  ────────── GND
-  │  Pin 34 │ IO21 ────────── SDA
-  │  Pin 37 │ IO22 ────────── SCL
-  └─────────┘
+ESP32 (Your Board)            ICM42688
+  ┌──────────────┐
+  │ RIGHT Pin 40 │ 3V3 ────────── VCC
+  │ LEFT  Pin 1  │ GND ────────── GND
+  │ LEFT  Pin 6  │ P21 ────────── SDA
+  │ LEFT  Pin 3  │ P22 ────────── SCL
+  └──────────────┘
 ```
 
 See `circuitpython/examples/ESP32_WROOM32_WIRING_GUIDE.md` for detailed diagrams.
@@ -191,8 +191,8 @@ ICM42688 I2C Test - ESP32-WROOM-32 (40-pin DevKit)
 ======================================================================
 
 Initializing I2C bus...
-  SDA: GPIO21 (Pin 34)
-  SCL: GPIO22 (Pin 37)
+  SDA: P21/GPIO21 (LEFT Pin 6)
+  SCL: P22/GPIO22 (LEFT Pin 3)
   Frequency: 400kHz
 ✓ I2C bus initialized
 
@@ -275,7 +275,7 @@ accel = icm.acceleration
 ### Problem: No I2C devices found
 
 **Check:**
-1. Wiring: VCC=3.3V, GND=GND, SDA=IO21, SCL=IO22
+1. Wiring: VCC=3V3 (RIGHT Pin 40), GND=GND (LEFT Pin 1), SDA=P21 (LEFT Pin 6), SCL=P22 (LEFT Pin 3)
 2. Power LED on ICM42688 (if available)
 3. Try different I2C address: `ICM42688(i2c, address=0x68)`
 4. Lower I2C speed: `I2C(scl=board.IO22, sda=board.IO21, frequency=100000)`

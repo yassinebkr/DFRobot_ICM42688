@@ -173,14 +173,14 @@ If signals are 5V, you need **level shifters** between board and ESP32.
 ### Wiring for I2C Mode
 
 ```
-ICM42688P Pin          ESP32-WROOM-32 Pin
-─────────────          ──────────────────
-V                 ───► 3.3V (Pin 1 or 22)
-GND               ───► GND (Pin 14 or 20)
-SDA/MOSI/AD0/MISO ───► IO21 (Pin 34) - I2C Data
-SCL/SCLK          ───► IO22 (Pin 37) - I2C Clock
+ICM42688P Pin          ESP32-WROOM-32 Pin (Your Board)
+─────────────          ─────────────────────────────────
+V                 ───► 3V3 (RIGHT Pin 40)
+GND               ───► GND (LEFT Pin 1, 7, or 20)
+SDA/MOSI/AD0/MISO ───► P21 (LEFT Pin 6) - I2C Data
+SCL/SCLK          ───► P22 (LEFT Pin 3) - I2C Clock
 CS                ───► Not connected (leave floating for I2C mode)
-INT1              ───► IO23 (Pin 38) - Optional
+INT1              ───► P23 (LEFT Pin 2) - Optional
 INT2              ───► (Leave disconnected for now)
 ```
 
@@ -188,15 +188,15 @@ INT2              ───► (Leave disconnected for now)
 
 ```
    ICM42688P Breakout              ESP32 DevKit
-   (Side view)                     (40-pin)
+   (Side view)                     (Your 40-pin Board)
 
    INT2  ○
-   INT1  ○ ─────────────────────► Pin 38 (IO23) - Optional
+   INT1  ○ ─────────────────────► LEFT Pin 2 (P23) - Optional
    CS    ○ (floating)
-   SCL   ○ ─────────────────────► Pin 37 (IO22)
-   SDA   ○ ─────────────────────► Pin 34 (IO21)
-   GND   ○ ─────────────────────► Pin 14 (GND)
-   V     ○ ─────────────────────► Pin 1  (3.3V)
+   SCL   ○ ─────────────────────► LEFT Pin 3 (P22)
+   SDA   ○ ─────────────────────► LEFT Pin 6 (P21)
+   GND   ○ ─────────────────────► LEFT Pin 1 (GND)
+   V     ○ ─────────────────────► RIGHT Pin 40 (3V3)
 ```
 
 ### I2C Address
@@ -382,11 +382,11 @@ Add a **bidirectional I2C level shifter** between board and ESP32:
 2. Verify signals are 3.3V (NOT 5V)
 3. If 5V, use level shifters
 
-**SAFE CONNECTION:**
-- V → ESP32 3.3V
-- GND → ESP32 GND
-- SDA/MOSI/AD0/MISO → IO21
-- SCL/SCLK → IO22
+**SAFE CONNECTION (Your Board):**
+- V → ESP32 3V3 (RIGHT Pin 40)
+- GND → ESP32 GND (LEFT Pin 1, 7, or 20)
+- SDA/MOSI/AD0/MISO → P21 (LEFT Pin 6)
+- SCL/SCLK → P22 (LEFT Pin 3)
 - CS → Not connected
 
 ---

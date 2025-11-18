@@ -22,6 +22,7 @@ Complete hardware setup guide for testing the ICM42688 library with ESP32-WROOM-
 ```
                     ESP32-WROOM-32 DevKit (40-pin)
                     ==============================
+                    Your Board Pinout
 
          ┌─────────────────────────────────┐
          │   ┌───────────────────────┐     │
@@ -29,27 +30,37 @@ Complete hardware setup guide for testing the ICM42688 library with ESP32-WROOM-
          │   │       Module          │     │
          │   └───────────────────────┘     │
          │                                 │
-    3V3  │ 1  ○                      ○ 40 │ GND
-    EN   │ 2  ○                      ○ 39 │ GND
-   VP36  │ 3  ○                      ○ 38 │ IO23 (MOSI)
-   VN39  │ 4  ○                      ○ 37 │ IO22 (SCL) ←─ I2C
-   IO34  │ 5  ○                      ○ 36 │ TX0
-   IO35  │ 6  ○                      ○ 35 │ RX0
-   IO32  │ 7  ○                      ○ 34 │ IO21 (SDA) ←─ I2C
-   IO33  │ 8  ○                      ○ 33 │ GND
-   IO25  │ 9  ○                      ○ 32 │ IO19 (MISO)
-   IO26  │ 10 ○                      ○ 31 │ IO18 (SCK)
-   IO27  │ 11 ○                      ○ 30 │ IO5
-   IO14  │ 12 ○  [USB]    [BOOT]     ○ 29 │ IO17
-   IO12  │ 13 ○   [○]       [○]      ○ 28 │ IO16
-    GND  │ 14 ○                      ○ 27 │ IO4
-   IO13  │ 15 ○                      ○ 26 │ IO0
-    SD2  │ 16 ○                      ○ 25 │ IO2 (LED)
-    SD3  │ 17 ○                      ○ 24 │ IO15
-    CMD  │ 18 ○                      ○ 23 │ GND
-    VIN  │ 19 ○                      ○ 22 │ 3V3
+    GND  │ 1  ○                      ○ 40 │ 3V3   ←─ Power
+    P23  │ 2  ○                      ○ 39 │ EN
+    P22  │ 3  ○  [USB]    [BOOT]     ○ 38 │ SVP
+    TX   │ 4  ○   [○]       [○]      ○ 37 │ SVN
+    RX   │ 5  ○                      ○ 36 │ P34
+    P21  │ 6  ○                      ○ 35 │ P35
+    GND  │ 7  ○                      ○ 34 │ P32
+    P19  │ 8  ○                      ○ 33 │ P33
+    P18  │ 9  ○                      ○ 32 │ P25
+    P5   │ 10 ○                      ○ 31 │ P26
+    P17  │ 11 ○                      ○ 30 │ P27
+    P16  │ 12 ○                      ○ 29 │ P14
+    P4   │ 13 ○                      ○ 28 │ P12
+    P0   │ 14 ○                      ○ 27 │ GND
+    P2   │ 15 ○                      ○ 26 │ P13
+    P15  │ 16 ○                      ○ 25 │ SD2
+    SD1  │ 17 ○                      ○ 24 │ SD3
+    SD0  │ 18 ○                      ○ 23 │ GND
+    CLK  │ 19 ○                      ○ 22 │ 5V
     GND  │ 20 ○                      ○ 21 │ GND
          └─────────────────────────────────┘
+
+I2C Default Pins:
+  P21 = GPIO21 (SDA) - LEFT side, Pin 6
+  P22 = GPIO22 (SCL) - LEFT side, Pin 3
+
+SPI Default Pins:
+  P23 = GPIO23 (MOSI) - LEFT side, Pin 2
+  P19 = GPIO19 (MISO) - LEFT side, Pin 8
+  P18 = GPIO18 (SCK)  - LEFT side, Pin 9
+  P5  = GPIO5  (CS)   - LEFT side, Pin 10
 ```
 
 ---
@@ -59,41 +70,41 @@ Complete hardware setup guide for testing the ICM42688 library with ESP32-WROOM-
 ### Standard I2C Connection
 
 ```
-ICM42688 Breakout          ESP32-WROOM-32 DevKit
-┌────────────────┐         ┌──────────────────────┐
-│                │         │                      │
-│  VCC/VDD  ○────┼─────────┤ Pin 1 (3.3V)         │
-│  GND      ○────┼─────────┤ Pin 14/20/21 (GND)   │
-│  SDA      ○────┼─────────┤ Pin 34 (IO21/SDA)    │
-│  SCL      ○────┼─────────┤ Pin 37 (IO22/SCL)    │
-│  INT1     ○────┼─────────┤ Pin 38 (IO23)        │ (optional)
-│  INT2     ○────┼─────────┤ Pin 32 (IO19)        │ (optional)
-│  SDO/AD0  ○ ┬  │         │                      │
-│           │ │  │         Pull HIGH for 0x69     │
-│           │ └──┼─────────┤ 3.3V (default)       │
-│           │    │    OR   │                      │
-│           └────┼─────────┤ GND (for 0x68)       │
-│                │         │                      │
-└────────────────┘         └──────────────────────┘
+ICM42688 Breakout          ESP32-WROOM-32 DevKit (Your Board)
+┌────────────────┐         ┌──────────────────────────────┐
+│                │         │                              │
+│  VCC/VDD  ○────┼─────────┤ RIGHT Pin 40 (3V3)           │
+│  GND      ○────┼─────────┤ LEFT Pin 1,7,20 or RIGHT 21,23,27 (GND) │
+│  SDA      ○────┼─────────┤ LEFT Pin 6 (P21)             │
+│  SCL      ○────┼─────────┤ LEFT Pin 3 (P22)             │
+│  INT1     ○────┼─────────┤ LEFT Pin 2 (P23) - Optional  │
+│  INT2     ○────┼─────────┤ LEFT Pin 8 (P19) - Optional  │
+│  SDO/AD0  ○ ┬  │         │                              │
+│           │ │  │         Pull HIGH for 0x69             │
+│           │ └──┼─────────┤ 3V3 (default)                │
+│           │    │    OR   │                              │
+│           └────┼─────────┤ GND (for 0x68)               │
+│                │         │                              │
+└────────────────┘         └──────────────────────────────┘
 
 Connections:
-  VCC     → 3.3V  (Pin 1 or 22)
-  GND     → GND   (Pin 14, 20, 21, 23, 33, 39, or 40)
-  SDA     → IO21  (Pin 34)
-  SCL     → IO22  (Pin 37)
-  INT1    → IO23  (Pin 38) - Optional for interrupts
-  INT2    → IO19  (Pin 32) - Optional for interrupts
-  SDO/AD0 → 3.3V  (Address 0x69) or GND (Address 0x68)
+  VCC     → 3V3   (RIGHT side, Pin 40 - top pin)
+  GND     → GND   (Multiple: LEFT 1,7,20  RIGHT 21,23,27)
+  SDA     → P21   (LEFT side, Pin 6)
+  SCL     → P22   (LEFT side, Pin 3)
+  INT1    → P23   (LEFT side, Pin 2) - Optional
+  INT2    → P19   (LEFT side, Pin 8) - Optional
+  SDO/AD0 → 3V3   (Address 0x69) or GND (Address 0x68)
 ```
 
 ### I2C Pin Details
 
-| Function | GPIO | Physical Pin | Notes |
-|----------|------|--------------|-------|
-| SDA | GPIO21 | Pin 34 | Default I2C Data |
-| SCL | GPIO22 | Pin 37 | Default I2C Clock |
-| Power | 3.3V | Pin 1 or 22 | **NEVER USE 5V!** |
-| Ground | GND | Pin 14, 20, 21, 23, 33, 39, 40 | Multiple GND pins available |
+| Function | GPIO | Physical Pin | Side | Notes |
+|----------|------|--------------|------|-------|
+| SDA | GPIO21 (P21) | Pin 6 | LEFT | Default I2C Data |
+| SCL | GPIO22 (P22) | Pin 3 | LEFT | Default I2C Clock |
+| Power | 3.3V (3V3) | Pin 40 | RIGHT | **NEVER USE 5V!** |
+| Ground | GND | Pins 1,7,20 (LEFT) or 21,23,27 (RIGHT) | Both | Multiple GND pins available |
 
 **I2C Frequency Options:**
 - 100 kHz: Standard mode (conservative)
@@ -111,47 +122,47 @@ Connections:
 ### VSPI Connection (Default Hardware SPI)
 
 ```
-ICM42688 Breakout          ESP32-WROOM-32 DevKit
-┌────────────────┐         ┌──────────────────────┐
-│                │         │                      │
-│  VCC      ○────┼─────────┤ Pin 1 (3.3V)         │
-│  GND      ○────┼─────────┤ Pin 14/20/21 (GND)   │
-│  MOSI/SDI ○────┼─────────┤ Pin 38 (IO23/MOSI)   │
-│  MISO/SDO ○────┼─────────┤ Pin 32 (IO19/MISO)   │
-│  SCK/SCLK ○────┼─────────┤ Pin 31 (IO18/SCK)    │
-│  CS/nCS   ○────┼─────────┤ Pin 29 (IO5)         │
-│  INT1     ○────┼─────────┤ Pin 27 (IO4)         │ (optional)
-│  INT2     ○────┼─────────┤ Pin 24 (IO15)        │ (optional)
-│                │         │                      │
-└────────────────┘         └──────────────────────┘
+ICM42688 Breakout          ESP32-WROOM-32 DevKit (Your Board)
+┌────────────────┐         ┌────────────────────────────┐
+│                │         │                            │
+│  VCC      ○────┼─────────┤ RIGHT Pin 40 (3V3)         │
+│  GND      ○────┼─────────┤ LEFT Pin 1,7,20 or RIGHT 21,23,27 (GND) │
+│  MOSI/SDI ○────┼─────────┤ LEFT Pin 2 (P23/MOSI)      │
+│  MISO/SDO ○────┼─────────┤ LEFT Pin 8 (P19/MISO)      │
+│  SCK/SCLK ○────┼─────────┤ LEFT Pin 9 (P18/SCK)       │
+│  CS/nCS   ○────┼─────────┤ LEFT Pin 10 (P5)           │
+│  INT1     ○────┼─────────┤ LEFT Pin 13 (P4) - Optional│
+│  INT2     ○────┼─────────┤ LEFT Pin 16 (P15) - Optional│
+│                │         │                            │
+└────────────────┘         └────────────────────────────┘
 
 Connections:
-  VCC      → 3.3V  (Pin 1 or 22)
-  GND      → GND   (Pin 14, 20, 21, 23, 33, 39, or 40)
-  MOSI/SDI → IO23  (Pin 38)
-  MISO/SDO → IO19  (Pin 32)
-  SCK      → IO18  (Pin 31)
-  CS       → IO5   (Pin 29) - Any GPIO works
-  INT1     → IO4   (Pin 27) - Optional
-  INT2     → IO15  (Pin 24) - Optional
+  VCC      → 3V3  (RIGHT Pin 40)
+  GND      → GND  (LEFT 1,7,20 or RIGHT 21,23,27)
+  MOSI/SDI → P23  (LEFT Pin 2)
+  MISO/SDO → P19  (LEFT Pin 8)
+  SCK      → P18  (LEFT Pin 9)
+  CS       → P5   (LEFT Pin 10) - Any GPIO works
+  INT1     → P4   (LEFT Pin 13) - Optional
+  INT2     → P15  (LEFT Pin 16) - Optional
 ```
 
 ### SPI Pin Details
 
-| Function | GPIO | Physical Pin | SPI Bus | Notes |
-|----------|------|--------------|---------|-------|
-| MOSI | GPIO23 | Pin 38 | VSPI | SPI Data Out (ESP32 → Sensor) |
-| MISO | GPIO19 | Pin 32 | VSPI | SPI Data In (Sensor → ESP32) |
-| SCK | GPIO18 | Pin 31 | VSPI | SPI Clock |
-| CS | GPIO5 | Pin 29 | - | Chip Select (any GPIO) |
+| Function | GPIO | Physical Pin | Side | SPI Bus | Notes |
+|----------|------|--------------|------|---------|-------|
+| MOSI | GPIO23 (P23) | Pin 2 | LEFT | VSPI | SPI Data Out (ESP32 → Sensor) |
+| MISO | GPIO19 (P19) | Pin 8 | LEFT | VSPI | SPI Data In (Sensor → ESP32) |
+| SCK | GPIO18 (P18) | Pin 9 | LEFT | VSPI | SPI Clock |
+| CS | GPIO5 (P5) | Pin 10 | LEFT | - | Chip Select (any GPIO) |
 
 **Alternative: HSPI Pins (if VSPI conflicts)**
-| Function | GPIO | Physical Pin |
-|----------|------|--------------|
-| MOSI | GPIO13 | Pin 15 |
-| MISO | GPIO12 | Pin 13 |
-| SCK | GPIO14 | Pin 12 |
-| CS | Any GPIO | User choice |
+| Function | GPIO | Physical Pin | Side |
+|----------|------|--------------|------|
+| MOSI | GPIO13 (P13) | Pin 26 | RIGHT |
+| MISO | GPIO12 (P12) | Pin 28 | RIGHT |
+| SCK | GPIO14 (P14) | Pin 29 | RIGHT |
+| CS | Any GPIO | User choice | - |
 
 **SPI Speed Options:**
 - 1 MHz: Conservative (always works)
@@ -167,23 +178,24 @@ Connections:
 ```
     ESP32-WROOM-32                    ICM42688
     DevKit (40-pin)                   Breakout
+    Your Board
 
-    Pin 1  (3.3V) ──────┬─────────── VCC
-                        │
-    Pin 34 (IO21) ──────┼─────────── SDA
-                        │
-    Pin 37 (IO22) ──────┼─────────── SCL
-                        │
-    Pin 14 (GND)  ──────┴─────────── GND
+    RIGHT Pin 40 (3V3) ──────┬─────────── VCC
+                             │
+    LEFT  Pin 6  (P21) ──────┼─────────── SDA
+                             │
+    LEFT  Pin 3  (P22) ──────┼─────────── SCL
+                             │
+    LEFT  Pin 1  (GND) ──────┴─────────── GND
 
 
 Connect on breadboard:
-  Row 1:  3.3V  → Red power rail
-  Row 2:  GND   → Blue/Black ground rail
-  Row 5:  IO21  → ICM42688 SDA
-  Row 7:  IO22  → ICM42688 SCL
-  Row 8:  VCC   → Red power rail
-  Row 9:  GND   → Ground rail
+  RIGHT Pin 40:  3V3   → Red power rail
+  LEFT Pin 1:    GND   → Blue/Black ground rail
+  LEFT Pin 6:    P21   → ICM42688 SDA
+  LEFT Pin 3:    P22   → ICM42688 SCL
+  ICM42688 VCC:        → Red power rail
+  ICM42688 GND:        → Ground rail
 ```
 
 ### Soldered Connection Recommendations
