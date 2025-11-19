@@ -176,35 +176,32 @@ Hard resetting via RTS pin...
 
 ### Step 3: Flash MicroPython Firmware
 
-**IMPORTANT: Start with 115200 baud for reliability. Only use 460800 if 115200 is too slow and you've had success with lower speed first.**
-
-#### Recommended (Reliable) Method:
+**Recommended method with automatic reset (most reliable):**
 
 ```bash
-# ESP32 Generic/WROOM/Lolin D32 - Use 115200 baud for reliability
-esptool --chip esp32 --port /dev/ttyUSB0 --baud 115200 write_flash -z 0x1000 ESP32_GENERIC-20240105-v1.22.1.bin
+# ESP32 Generic/WROOM/Lolin D32
+esptool --chip esp32 --port /dev/ttyUSB0 --before default_reset --after hard_reset --baud 115200 write_flash -z 0x1000 ESP32_GENERIC-20240105-v1.22.1.bin
 
-# ESP32-C3 - Use 115200 baud for reliability
-esptool --chip esp32c3 --port /dev/ttyUSB0 --baud 115200 write_flash -z 0x0 ESP32_GENERIC_C3-20240105-v1.22.1.bin
+# ESP32-C3
+esptool --chip esp32c3 --port /dev/ttyUSB0 --before default_reset --after hard_reset --baud 115200 write_flash -z 0x0 ESP32_GENERIC_C3-20240105-v1.22.1.bin
+
+# Windows example
+esptool --chip esp32 --port COM8 --before default_reset --after hard_reset --baud 115200 write_flash -z 0x1000 ESP32_GENERIC-20240105-v1.22.1.bin
 ```
 
-#### Fast Method (Use only if 115200 works reliably):
+**Alternative (if above fails):**
 
 ```bash
-# ESP32 Generic/WROOM/Lolin D32 - Faster but can fail on some systems
-esptool --chip esp32 --port /dev/ttyUSB0 --baud 460800 write_flash -z 0x1000 ESP32_GENERIC-20240105-v1.22.1.bin
-
-# ESP32-C3 - Faster but can fail on some systems
-esptool --chip esp32c3 --port /dev/ttyUSB0 --baud 460800 write_flash -z 0x0 ESP32_GENERIC_C3-20240105-v1.22.1.bin
+# Without reset flags - requires manual reset after
+esptool --chip esp32 --port /dev/ttyUSB0 --baud 115200 write_flash -z 0x1000 ESP32_GENERIC-20240105-v1.22.1.bin
 ```
 
 **Parameters explained:**
-- `--chip esp32`: Specify chip type (esp32, esp32c3, esp32s3)
-- `--port /dev/ttyUSB0`: Serial port
-- `--baud 115200`: Baud rate (115200 is reliable, 460800 is faster but riskier)
-- `write_flash`: Write firmware
-- `-z`: Compress data during transfer
-- `0x1000`: Flash offset (0x1000 for ESP32, 0x0 for ESP32-C3)
+- `--before default_reset --after hard_reset`: Automatic reset before/after flash (prevents boot errors)
+- `--chip esp32`: Specify chip type
+- `--port`: Serial port (COM8 on Windows, /dev/ttyUSB0 on Linux)
+- `--baud 115200`: Reliable baud rate
+- `-z 0x1000`: Compressed write at offset 0x1000 (0x0 for ESP32-C3)
 
 **Expected output during flashing:**
 ```
@@ -601,32 +598,22 @@ lsof | grep ttyUSB0
 # Kill those processes if needed
 ```
 
-#### Step 2: Try with reliable 115200 baud rate
+#### Step 2: Reflash with automatic reset flags
 
 ```bash
-# 1. Erase flash completely
+# 1. Erase flash
 esptool --chip esp32 --port /dev/ttyUSB0 erase_flash
 
-# 2. Wait for "Chip erase completed successfully"
+# 2. Flash with automatic reset (MOST RELIABLE)
+esptool --chip esp32 --port /dev/ttyUSB0 --before default_reset --after hard_reset --baud 115200 write_flash -z 0x1000 ESP32_GENERIC-20240105-v1.22.1.bin
 
-# 3. Disconnect and reconnect USB cable
-# Wait 2 seconds
+# Windows:
+esptool --chip esp32 --port COM8 --before default_reset --after hard_reset --baud 115200 write_flash -z 0x1000 ESP32_GENERIC-20240105-v1.22.1.bin
 
-# 4. Flash with SLOW, reliable baud rate
-esptool --chip esp32 --port /dev/ttyUSB0 --baud 115200 write_flash -z 0x1000 ESP32_GENERIC-20240105-v1.22.1.bin
-
-# 5. VERIFY you see "Hash of data verified."
+# MUST see "Hash of data verified."
 ```
 
-#### Step 3: Physically reset ESP32
-
-**IMPORTANT:** After flashing completes:
-1. Disconnect USB cable completely
-2. Wait 5 seconds
-3. Reconnect USB cable
-4. Wait 5 seconds for boot
-
-#### Step 4: Verify with serial monitor
+#### Step 3: Verify boot
 
 ```bash
 # Connect with screen/PuTTY at 115200 baud
@@ -636,7 +623,7 @@ screen /dev/ttyUSB0 115200
 # You MUST see MicroPython banner
 ```
 
-#### Step 5: If still failing, try these:
+#### Step 4: If still failing, try these:
 
 **A. Verify firmware file integrity**
 ```bash
@@ -655,20 +642,11 @@ wget https://micropython.org/resources/firmware/ESP32_GENERIC-20240105-v1.22.1.b
 
 **C. Hold BOOT button during flash**
 ```bash
-# 1. Hold BOOT/FLASH button on ESP32
-# 2. Run erase_flash command while holding
-# 3. Keep holding until "Connecting...." appears
-# 4. Release BOOT button
-# 5. Wait for erase to complete
-# 6. Repeat for write_flash command
+# Hold BOOT/FLASH button on ESP32 while running commands
+# Release after "Connecting...." appears
 ```
 
-**D. Use manual reset timing**
-```bash
-esptool --chip esp32 --port /dev/ttyUSB0 --before default_reset --after hard_reset --baud 115200 write_flash -z 0x1000 ESP32_GENERIC-20240105-v1.22.1.bin
-```
-
-**E. Check for hardware issues**
+**D. Check for hardware issues**
 ```bash
 # Read ESP32 chip info to verify hardware
 esptool --chip esp32 --port /dev/ttyUSB0 chip_id
@@ -678,7 +656,7 @@ esptool --chip esp32 --port /dev/ttyUSB0 flash_id
 # If these fail, hardware may be damaged
 ```
 
-**F. Last resort - Try older MicroPython version**
+**E. Try older MicroPython version (last resort)**
 ```bash
 # Download older stable version
 wget https://micropython.org/resources/firmware/esp32-20220618-v1.19.1.bin
@@ -857,23 +835,19 @@ REPL is working!
 ```bash
 # 1. Erase flash
 esptool --chip esp32 --port /dev/ttyUSB0 erase_flash
-# Wait for "Chip erase completed successfully"
 
-# 2. Disconnect and reconnect USB (IMPORTANT!)
-# Wait 2 seconds
+# 2. Flash with automatic reset (most reliable)
+esptool --chip esp32 --port /dev/ttyUSB0 --before default_reset --after hard_reset --baud 115200 write_flash -z 0x1000 ESP32_GENERIC-20240105-v1.22.1.bin
 
-# 3. Flash firmware with RELIABLE baud rate (115200)
-esptool --chip esp32 --port /dev/ttyUSB0 --baud 115200 write_flash -z 0x1000 ESP32_GENERIC-20240105-v1.22.1.bin
-# MUST see "Hash of data verified."
+# 3. Verify boot
+mpremote
+# Press Enter if >>> doesn't appear
+```
 
-# 4. Disconnect and reconnect USB again (CRITICAL!)
-# Wait 5 seconds
-
-# 5. Verify boot with serial monitor
-screen /dev/ttyUSB0 115200
-# Press RESET button - should see MicroPython banner
-
-# 6. Now safe to use mpremote
+**Windows:**
+```powershell
+esptool --chip esp32 --port COM8 erase_flash
+esptool --chip esp32 --port COM8 --before default_reset --after hard_reset --baud 115200 write_flash -z 0x1000 ESP32_GENERIC-20240105-v1.22.1.bin
 mpremote
 ```
 
