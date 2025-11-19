@@ -320,6 +320,7 @@ MicroPython v1.22.1 on 2024-01-05; ESP32 module with ESP32
 
 ### Option 1: Using mpremote (Recommended)
 
+#### Linux/macOS:
 ```bash
 # Connect to REPL
 mpremote
@@ -330,16 +331,91 @@ mpremote
 # >>>
 ```
 
-Test Python:
+#### Windows:
+```powershell
+# Option 1: Auto-detect port (recommended)
+mpremote
+
+# Option 2: Specify port explicitly
+mpremote connect port:COM8
+```
+
+**Expected output:**
+```
+Connected to MicroPython at COM8
+Use Ctrl-] or Ctrl-x to exit this shell
+MicroPython v1.22.1 on 2024-01-05; ESP32 module with ESP32
+Type "help()" for more information.
+>>>
+```
+
+### ⚠️ WINDOWS USERS: REPL Prompt Not Appearing?
+
+If you see:
+```
+Connected to MicroPython at COM8
+Use Ctrl-] or Ctrl-x to exit this shell
+```
+
+But **NO `>>>` prompt appears**, try these steps **IN ORDER**:
+
+#### Fix 1: Press Enter (Most Common Solution)
+```
+[After seeing "Use Ctrl-] or Ctrl-x to exit this shell"]
+Press Enter key 2-3 times
+>>>  [Prompt should now appear!]
+```
+
+#### Fix 2: Interrupt Running Program
+```
+Press Ctrl+C
+[This stops any auto-running program]
+>>>  [Prompt should appear]
+```
+
+#### Fix 3: Soft Reset ESP32
+```
+Press Ctrl+D
+[ESP32 will reboot and show MicroPython banner]
+>>>  [Fresh prompt appears]
+```
+
+#### Fix 4: Use Windows Terminal or PowerShell 7
+```powershell
+# Install Windows Terminal from Microsoft Store (free)
+# Or download PowerShell 7: https://github.com/PowerShell/PowerShell
+
+# Then run:
+mpremote
+```
+
+#### Fix 5: Try Alternative Connection Method
+```powershell
+# Exit current session (Ctrl+])
+# Reconnect with explicit port and reboot:
+mpremote connect port:COM8 repl
+
+# Or force a soft reset on connection:
+mpremote connect port:COM8 exec "import machine; machine.soft_reset()"
+```
+
+### Testing the REPL
+
+Once you see the `>>>` prompt:
+
 ```python
 >>> print("Hello from MicroPython!")
 Hello from MicroPython!
 >>> import sys
 >>> print(sys.platform)
 esp32
+>>> print("Connection successful!")
+Connection successful!
 ```
 
-Exit REPL: Press `Ctrl+]`
+### Exit REPL
+- **Windows:** Press `Ctrl+]` or `Ctrl+X`
+- **Linux/macOS:** Press `Ctrl+]`
 
 ### Option 2: Using screen (macOS/Linux)
 
@@ -625,6 +701,101 @@ esptool --chip esp32 --port /dev/ttyUSB0 --baud 115200 write_flash -z 0x1000 esp
   ```
 - **macOS:** Check System Preferences → Security & Privacy
 - **Windows:** Close Arduino IDE, PuTTY, or other serial programs
+
+---
+
+### Issue: mpremote Connects but No REPL Prompt (>>>)
+
+**Symptom:**
+```
+PS C:\Users\...\esp32> mpremote connect port:COM8
+Connected to MicroPython at COM8
+Use Ctrl-] or Ctrl-x to exit this shell
+[cursor blinks but no >>> prompt appears]
+```
+
+**Cause:** This is common on Windows when:
+- A program is auto-running on boot (boot.py or main.py)
+- Terminal needs to send newline to trigger prompt
+- ESP32 REPL is waiting for input but hasn't displayed prompt
+
+**SOLUTIONS (try in order):**
+
+#### Solution 1: Press Enter (90% of cases)
+```
+[After connection message appears]
+Press Enter 2-3 times
+>>> [Prompt should appear immediately]
+```
+
+#### Solution 2: Interrupt with Ctrl+C
+```
+Press Ctrl+C (may need to press 2-3 times)
+
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+KeyboardInterrupt:
+>>> [Prompt appears after interruption]
+```
+
+#### Solution 3: Soft Reset with Ctrl+D
+```
+Press Ctrl+D
+[ESP32 soft resets and displays boot messages]
+MicroPython v1.22.1 on 2024-01-05; ESP32 module with ESP32
+Type "help()" for more information.
+>>> [Fresh prompt appears]
+```
+
+#### Solution 4: Use Windows Terminal
+Windows Command Prompt and PowerShell 5 have terminal limitations. Use modern terminal:
+
+```powershell
+# Download Windows Terminal from Microsoft Store (free)
+# Or use PowerShell 7: https://aka.ms/powershell
+
+# Then reconnect:
+mpremote
+```
+
+#### Solution 5: Check for auto-running code
+Your ESP32 might have `main.py` running automatically on boot:
+
+```powershell
+# Connect and check files
+mpremote ls
+
+# If you see main.py or boot.py, rename it temporarily:
+mpremote exec "import os; os.rename('main.py', 'main.py.bak')"
+
+# Reset ESP32:
+mpremote exec "import machine; machine.reset()"
+
+# Reconnect:
+mpremote
+>>> [Prompt should now appear]
+```
+
+#### Solution 6: Try PuTTY instead (Windows alternative)
+```
+1. Download PuTTY: https://www.putty.org/
+2. Connection type: Serial
+3. Serial line: COM8
+4. Speed: 115200
+5. Click "Open"
+6. Press Enter - you should see >>>
+```
+
+**Verification:** Once you see `>>>`, test it works:
+```python
+>>> print("REPL is working!")
+REPL is working!
+>>> 2 + 2
+4
+>>>
+```
+
+---
 
 ### Issue: "Failed to connect to ESP32"
 
