@@ -70,7 +70,7 @@ pip install esptool mpremote adafruit-ampy
 ### Verify Installation
 
 ```bash
-esptool.py version
+esptool version
 mpremote version
 ```
 
