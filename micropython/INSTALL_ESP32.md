@@ -104,7 +104,6 @@ mpremote version
 
 **Note:** Always use the latest stable version (v1.19 or later required for ICM42688 driver)
 
----
 
 ## Flash MicroPython to ESP32
 
@@ -122,22 +121,22 @@ Before flashing, erase the existing flash:
 
 ```bash
 # Replace /dev/ttyUSB0 with your port
-esptool.py --chip esp32 --port /dev/ttyUSB0 erase_flash
+esptool --chip esp32 --port /dev/ttyUSB0 erase_flash
 ```
 
 **Windows example:**
 ```bash
-esptool.py --chip esp32 --port COM3 erase_flash
+esptool --chip esp32 --port COM3 erase_flash
 ```
 
 ### Step 3: Flash MicroPython Firmware
 
 ```bash
 # ESP32 Generic/WROOM/Lolin D32
-esptool.py --chip esp32 --port /dev/ttyUSB0 --baud 460800 write_flash -z 0x1000 ESP32_GENERIC-20240105-v1.22.1.bin
+esptool --chip esp32 --port /dev/ttyUSB0 --baud 460800 write_flash -z 0x1000 ESP32_GENERIC-20240105-v1.22.1.bin
 
 # ESP32-C3
-esptool.py --chip esp32c3 --port /dev/ttyUSB0 --baud 460800 write_flash -z 0x0 ESP32_GENERIC_C3-20240105-v1.22.1.bin
+esptool --chip esp32c3 --port /dev/ttyUSB0 --baud 460800 write_flash -z 0x0 ESP32_GENERIC_C3-20240105-v1.22.1.bin
 ```
 
 **Parameters explained:**
@@ -160,7 +159,6 @@ Leaving...
 Hard resetting via RTS pin...
 ```
 
----
 
 ## Connect to ESP32
 
@@ -212,7 +210,6 @@ Exit: Press `Ctrl+A` then `K`, then `Y`
 5. Select your port
 6. Click "OK"
 
----
 
 ## Install ICM42688 Library
 
@@ -269,7 +266,6 @@ ampy ls
 
 3. Upload files via web interface
 
----
 
 ## Verify Installation
 
@@ -337,7 +333,6 @@ mpremote run micropython/examples/basic_i2c_esp32.py
 
 If all tests pass, installation is complete! 🎉
 
----
 
 ## Troubleshooting
 
@@ -406,7 +401,6 @@ If all tests pass, installation is complete! 🎉
 2. Close other serial connections
 3. Reduce file size (already optimized in this library)
 
----
 
 ## Quick Reference
 
@@ -414,8 +408,8 @@ If all tests pass, installation is complete! 🎉
 
 ```bash
 # Flash firmware
-esptool.py --chip esp32 --port /dev/ttyUSB0 erase_flash
-esptool.py --chip esp32 --port /dev/ttyUSB0 write_flash -z 0x1000 firmware.bin
+esptool --chip esp32 --port /dev/ttyUSB0 erase_flash
+esptool --chip esp32 --port /dev/ttyUSB0 write_flash -z 0x1000 firmware.bin
 
 # Connect to REPL
 mpremote
@@ -451,7 +445,6 @@ mpremote reset
 | SPI SCK  | 18   | VSPI         |
 | SPI CS   | 5    | Any GPIO     |
 
----
 
 ## Additional Resources
 
@@ -469,7 +462,6 @@ mpremote reset
 - MicroPython Forum: https://forum.micropython.org/
 - ESP32 Forum: https://www.esp32.com/
 
----
 
 ## Next Steps
 
