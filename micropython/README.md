@@ -310,9 +310,9 @@ MIT License - See LICENSE file
 
 ## Credits
 
-- Original CircuitPython driver: Yassine Bekkari
+- Original CircuitPython driver: Yassine Benkhira
 - Based on DFRobot_ICM42688
-- MicroPython port: Yassine Bekkari
+- MicroPython port: Yassine Benkhira
 
 ## Support
 
