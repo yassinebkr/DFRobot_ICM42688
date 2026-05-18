@@ -2,13 +2,6 @@
 
 A comprehensive multi-platform library for the **TDK InvenSense ICM-42688-P** 6-axis MEMS MotionTracking device, combining a 3-axis gyroscope and 3-axis accelerometer with I2C and SPI support.
 
-> Translations: [中文版](./docs/README_CN.md)
-
-![Product Image](./resources/images/SEN0452.jpg)
-
-**Product Link**: [DFRobot SEN0452](https://www.dfrobot.com/) — SKU: SEN0452
-
----
 
 ## Features
 
