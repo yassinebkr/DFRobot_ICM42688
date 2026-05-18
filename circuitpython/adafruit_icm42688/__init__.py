@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2025 Yassine Bekkari
+# SPDX-FileCopyrightText: 2025 Yassine Benkhira
 # SPDX-License-Identifier: MIT
 
 """
@@ -9,7 +9,7 @@ high-performance 6-axis MEMS motion tracking device. It supports both I2C and SP
 communication and provides access to all sensor features including FIFO, interrupts,
 and advanced motion detection.
 
-* Author(s): Yassine Bekkari (based on DFRobot_ICM42688)
+* Author(s): Yassine Benkhira (based on DFRobot_ICM42688)
 
 Implementation Notes
 --------------------

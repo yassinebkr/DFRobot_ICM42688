@@ -421,4 +421,4 @@ icm.enable_wake_on_motion(threshold=50, int_pin=1)
 
 **Document Version:** 1.0
 **Last Updated:** 2025
-**Author:** Yassine Bekkari
+**Author:** Yassine Benkhira

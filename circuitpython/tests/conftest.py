@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2025 Yassine Bekkari
+# SPDX-FileCopyrightText: 2025 Yassine Benkhira
 # SPDX-License-Identifier: MIT
 
 """

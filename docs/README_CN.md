@@ -1,10 +1,10 @@
 # DFRobot_ICM42688
 
-- [English Version](./README.md)
+- [English Version](../README.md)
 
 ICM-42688-P是一款6轴MEMS运动跟踪设备，它结合了一个3轴陀螺仪和一个3轴加速度计。它有一个可配置的主机接口，支持I3CSM, I2C和SPI串行通信，具有2 kB的FIFO和2个可编程中断，超低功率动态尾流支持，以最大限度地减少系统功耗。
 
-![产品实物图](./resources/images/SEN0352.jpg)
+![产品实物图](../resources/images/SEN0352.jpg)
 
 
 ## 产品链接(https://www.dfrobot.com.cn/)
