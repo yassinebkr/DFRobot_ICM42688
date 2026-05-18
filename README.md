@@ -14,7 +14,6 @@ A comprehensive multi-platform library for the **TDK InvenSense ICM-42688-P** 6-
 - Temperature sensor
 - Ultra-low-power operation
 
----
 
 ## Repository Structure
 
@@ -54,7 +53,6 @@ DFRobot_ICM42688/
 └── resources/                 ← Images and assets
 ```
 
----
 
 ## Supported Platforms
 
@@ -65,7 +63,6 @@ DFRobot_ICM42688/
 | **MicroPython** (ESP32)     | Python         | `micropython/`         | ✅ Stable  |
 | **Raspberry Pi / Linux**    | Python         | `python/raspberrypi/`  | ✅ Stable  |
 
----
 
 ## Quick Start
 
@@ -130,7 +127,6 @@ See [micropython/examples/](./micropython/examples/) and [docs/](./docs/) for in
 
 See [python/raspberrypi/](./python/raspberrypi/).
 
----
 
 ## Documentation
 
@@ -151,7 +147,6 @@ All detailed documentation lives in [`docs/`](./docs/):
 - [CircuitPython Feather RP2040 Wiring Guide](./circuitpython/examples/FEATHER_RP2040_WIRING_GUIDE.md)
 - [MicroPython ESP32 Installation](./micropython/INSTALL_ESP32.md)
 
----
 
 ## Installation
 
@@ -172,7 +167,6 @@ cp -r circuitpython/adafruit_icm42688 /media/CIRCUITPY/lib/
 mpremote cp -r micropython/icm42688 :
 ```
 
----
 
 ## Compatibility
 
@@ -214,7 +208,6 @@ The Arduino library exposes the original DFRobot API. Key methods:
 
 Full headers and source: [`arduino/DFRobot_ICM42688.h`](./arduino/DFRobot_ICM42688.h)
 
----
 
 ## Performance Notes
 
@@ -224,7 +217,6 @@ Full headers and source: [`arduino/DFRobot_ICM42688.h`](./arduino/DFRobot_ICM426
 
 For details, see [docs/CIRCUITPYTHON_PERFORMANCE_ANALYSIS.md](./docs/CIRCUITPYTHON_PERFORMANCE_ANALYSIS.md).
 
----
 
 ## History
 
@@ -233,7 +225,6 @@ For details, see [docs/CIRCUITPYTHON_PERFORMANCE_ANALYSIS.md](./docs/CIRCUITPYTH
 - **2025**     — MicroPython port added
 - **2025**     — Multi-platform documentation, performance optimizations, repository reorganization
 
----
 
 ## Credits
 
