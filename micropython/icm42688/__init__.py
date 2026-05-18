@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2025 Yassine Bekkari
+# SPDX-FileCopyrightText: 2025 Yassine Benkhira
 # SPDX-License-Identifier: MIT
 
 """
@@ -11,7 +11,7 @@ and advanced motion detection.
 
 Optimized for ESP32, RP2040, and other MicroPython-compatible microcontrollers.
 
-* Author(s): Yassine Bekkari (MicroPython port)
+* Author(s): Yassine Benkhira (MicroPython port)
 * Original: Based on CircuitPython implementation
 
 Hardware Compatibility

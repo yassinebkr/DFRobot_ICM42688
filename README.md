@@ -245,7 +245,7 @@ For details, see [docs/CIRCUITPYTHON_PERFORMANCE_ANALYSIS.md](./docs/CIRCUITPYTH
 ## Credits
 
 - Original Arduino library: **yangfeng** ([feng.yang@dfrobot.com](mailto:feng.yang@dfrobot.com)), DFRobot — [website](https://www.dfrobot.com/)
-- CircuitPython / MicroPython ports and performance work: **Yassine Bekkari**
+- CircuitPython / MicroPython ports and performance work: **Yassine Benkhira**
 
 ---
 

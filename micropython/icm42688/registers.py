@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2025 Yassine Bekkari
+# SPDX-FileCopyrightText: 2025 Yassine Benkhira
 # SPDX-License-Identifier: MIT
 
 """
@@ -9,7 +9,7 @@ MicroPython port optimized for ESP32 and RP2040.
 This module contains all register addresses, bit masks, and configuration
 constants for the TDK InvenSense ICM42688 IMU sensor.
 
-* Author(s): Yassine Bekkari (MicroPython port)
+* Author(s): Yassine Benkhira (MicroPython port)
 * Original: Based on CircuitPython implementation
 """
 

@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2025 Yassine Bekkari
+# SPDX-FileCopyrightText: 2025 Yassine Benkhira
 # SPDX-License-Identifier: MIT
 
 """
@@ -7,7 +7,7 @@ Register definitions and constants for the ICM42688 6-axis IMU.
 This module contains all register addresses, bit masks, and configuration
 constants for the TDK InvenSense ICM42688 IMU sensor.
 
-* Author(s): Yassine Bekkari (based on DFRobot_ICM42688)
+* Author(s): Yassine Benkhira (based on DFRobot_ICM42688)
 """
 
 # I2C Addresses
