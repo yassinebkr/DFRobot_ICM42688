@@ -374,6 +374,35 @@ class ICM42688:
         temp, _, _ = self._read_sensor_data()
         return temp
 
+    @property
+    def all_data(self) -> Tuple[float, Tuple[float, float, float], Tuple[float, float, float]]:
+        """
+        Read temperature, acceleration, and gyroscope in one efficient call.
+
+        This property performs a single 14-byte burst read to get all sensor data,
+        making it 2x faster than reading acceleration and gyro separately.
+
+        **Performance**: Use this instead of separate .acceleration and .gyro calls
+        to avoid redundant I2C/SPI transactions.
+
+        :return: Tuple of (temperature, (accel_x, accel_y, accel_z), (gyro_x, gyro_y, gyro_z))
+
+        .. code-block:: python
+
+            # Efficient: Single read
+            temp, accel, gyro = icm.all_data
+            print(f"Temp: {temp}°C")
+            print(f"Accel: {accel} m/s²")
+            print(f"Gyro: {gyro} rad/s")
+
+            # vs. Inefficient: Three separate reads
+            temp = icm.temperature      # Read #1 (14 bytes)
+            accel = icm.acceleration    # Read #2 (14 bytes)
+            gyro = icm.gyro             # Read #3 (14 bytes)
+            # Total: 42 bytes in 3 transactions vs 14 bytes in 1 transaction!
+        """
+        return self._read_sensor_data()
+
     # ========================================================================
     # Configuration methods
     # ========================================================================
