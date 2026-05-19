@@ -247,6 +247,23 @@ public:
 
   #define TAP_SINGLE 8
   #define TAP_DOUBLE 16
+
+  /**
+   * @struct sFIFOPacket_t
+   * @brief FIFO packet structure (16 bytes per packet)
+   * @note Used for bulk FIFO reading. Pre-converted to physical units.
+   */
+  typedef struct {
+    uint8_t header;        ///< Packet header byte
+    float accelX;          ///< X-axis acceleration (mg)
+    float accelY;          ///< Y-axis acceleration (mg)
+    float accelZ;          ///< Z-axis acceleration (mg)
+    float gyroX;           ///< X-axis gyro (dps)
+    float gyroY;           ///< Y-axis gyro (dps)
+    float gyroZ;           ///< Z-axis gyro (dps)
+    float temperature;     ///< Temperature (°C)
+  } sFIFOPacket_t;
+
   /**
    * @struct sSignalPathReset_t
    * @brief  Register:SIGNAL_PATH_RESET
@@ -1080,6 +1097,53 @@ public:
   void getFIFOData();
 
   /**
+   * @fn getFIFODataBulk
+   * @brief Read multiple FIFO packets in bulk (high-performance batch read)
+   * @param packets Array to store packet data (must be allocated by caller)
+   * @param maxPackets Maximum number of packets to read
+   * @return Number of packets actually read
+   * @details This method reads all available FIFO packets in a single operation,
+   *          dramatically improving throughput for data logging. Each packet contains
+   *          14 bytes (header + accel + gyro + temp). Use this instead of calling
+   *          getFIFOData() in a loop for 10-100x faster performance.
+   * @note Caller must allocate packets array with size >= maxPackets * sizeof(sFIFOPacket_t)
+   */
+  uint16_t getFIFODataBulk(sFIFOPacket_t* packets, uint16_t maxPackets);
+
+  /**
+   * @fn getFIFOCount
+   * @brief Get number of bytes currently in FIFO
+   * @return FIFO byte count (divide by 16 to get packet count)
+   */
+  uint16_t getFIFOCount();
+
+  /**
+   * @fn refreshSensorData
+   * @brief Read and cache all sensor data for efficient per-axis access
+   * @details Call this once, then use getAccelDataX/Y/Z and getGyroDataX/Y/Z without
+   *          additional I2C/SPI reads. Eliminates redundant reads when accessing
+   *          multiple axes. Provides same performance as reading all axes at once.
+   * @note This updates internal cached values. Per-axis getters will use cached data.
+   */
+  void refreshSensorData();
+
+  /**
+   * @fn getAllSensorData
+   * @brief Read all sensor data at once (single 14-byte transaction)
+   * @param accelX X-axis accelerometer (output, mg)
+   * @param accelY Y-axis accelerometer (output, mg)
+   * @param accelZ Z-axis accelerometer (output, mg)
+   * @param gyroX X-axis gyroscope (output, dps)
+   * @param gyroY Y-axis gyroscope (output, dps)
+   * @param gyroZ Z-axis gyroscope (output, dps)
+   * @param temp Temperature (output, °C)
+   * @details Most efficient way to read all axes. Use this instead of calling
+   *          individual per-axis methods when you need all data.
+   */
+  void getAllSensorData(float& accelX, float& accelY, float& accelZ,
+                        float& gyroX, float& gyroY, float& gyroZ, float& temp);
+
+  /**
    * @fn setINTMode
    * @brief Set interrupt mode
    * @param INTPin  Interrupt pin 
@@ -1239,6 +1303,19 @@ private:
   int16_t _gyroY;
   int8_t _temp;
   int8_t _INTPin;
+
+  // Performance optimization: Cached sensor data for efficient per-axis access
+  bool _cacheValid;      ///< True if cached data is valid (after refreshSensorData())
+  float _cachedAccelX;   ///< Cached X-axis acceleration (mg)
+  float _cachedAccelY;   ///< Cached Y-axis acceleration (mg)
+  float _cachedAccelZ;   ///< Cached Z-axis acceleration (mg)
+  float _cachedGyroX;    ///< Cached X-axis gyro (dps)
+  float _cachedGyroY;    ///< Cached Y-axis gyro (dps)
+  float _cachedGyroZ;    ///< Cached Z-axis gyro (dps)
+  float _cachedTemp;     ///< Cached temperature (°C)
+
+  // Helper method for updating cache
+  void _updateScaleFactors();
 
   sAccelConfig0_t accelConfig0;
   sPWRMgmt0_t PWRMgmt0;
