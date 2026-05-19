@@ -67,11 +67,6 @@ float DFRobot_ICM42688::getTemperature(void)
 
 float DFRobot_ICM42688::getAccelDataX(void)
 {
-  // Use cached value if available (after refreshSensorData())
-  if (_cacheValid) {
-    return _cachedAccelX;
-  }
-
   float value;
   if(FIFOMode){
     value = _accelX;
@@ -86,11 +81,6 @@ float DFRobot_ICM42688::getAccelDataX(void)
 
 float DFRobot_ICM42688::getAccelDataY(void)
 {
-  // Use cached value if available (after refreshSensorData())
-  if (_cacheValid) {
-    return _cachedAccelY;
-  }
-
   float value;
   if(FIFOMode){
     value = _accelY;
@@ -105,11 +95,6 @@ float DFRobot_ICM42688::getAccelDataY(void)
 
 float DFRobot_ICM42688::getAccelDataZ(void)
 {
-  // Use cached value if available (after refreshSensorData())
-  if (_cacheValid) {
-    return _cachedAccelZ;
-  }
-
   float value;
   if(FIFOMode){
     value = _accelZ;
@@ -124,11 +109,6 @@ float DFRobot_ICM42688::getAccelDataZ(void)
 
 float DFRobot_ICM42688::getGyroDataX(void)
 {
-  // Use cached value if available (after refreshSensorData())
-  if (_cacheValid) {
-    return _cachedGyroX;
-  }
-
   float value;
   if(FIFOMode){
     value = _gyroX;
@@ -143,11 +123,6 @@ float DFRobot_ICM42688::getGyroDataX(void)
 
 float DFRobot_ICM42688::getGyroDataY(void)
 {
-  // Use cached value if available (after refreshSensorData())
-  if (_cacheValid) {
-    return _cachedGyroY;
-  }
-
   float value;
   if(FIFOMode){
     value = _gyroY;
@@ -162,11 +137,6 @@ float DFRobot_ICM42688::getGyroDataY(void)
 
 float DFRobot_ICM42688::getGyroDataZ(void)
 {
-  // Use cached value if available (after refreshSensorData())
-  if (_cacheValid) {
-    return _cachedGyroZ;
-  }
-
   float value;
   if(FIFOMode){
     value = _gyroZ;
@@ -178,6 +148,23 @@ float DFRobot_ICM42688::getGyroDataZ(void)
   }
   return value*_gyroRange;
 }
+
+// =========================================================================
+// Cached read API (use after refreshSensorData())
+// =========================================================================
+// These return values cached by the most recent refreshSensorData() call.
+// Use this API when you need multiple axes from the same sample without
+// triggering one I2C/SPI transaction per axis. Always pair with
+// refreshSensorData() each time you want fresh data.
+
+float DFRobot_ICM42688::getCachedAccelX(void) { return _cachedAccelX; }
+float DFRobot_ICM42688::getCachedAccelY(void) { return _cachedAccelY; }
+float DFRobot_ICM42688::getCachedAccelZ(void) { return _cachedAccelZ; }
+float DFRobot_ICM42688::getCachedGyroX(void)  { return _cachedGyroX; }
+float DFRobot_ICM42688::getCachedGyroY(void)  { return _cachedGyroY; }
+float DFRobot_ICM42688::getCachedGyroZ(void)  { return _cachedGyroZ; }
+float DFRobot_ICM42688::getCachedTemperature(void) { return _cachedTemp; }
+bool  DFRobot_ICM42688::isCacheValid(void) { return _cacheValid; }
 
 void DFRobot_ICM42688:: tapDetectionInit(uint8_t accelMode)
 {
@@ -434,6 +421,9 @@ void DFRobot_ICM42688::getFIFOData()
 
 uint16_t DFRobot_ICM42688::getFIFOCount()
 {
+  uint8_t bank = 0;
+  writeReg(ICM42688_REG_BANK_SEL, &bank, 1);
+
   uint8_t data[2];
   readReg(ICM42688_FIFO_COUNTH, data, 2);
   return ((uint16_t)data[0] << 8) | (uint16_t)data[1];
@@ -444,6 +434,10 @@ uint16_t DFRobot_ICM42688::getFIFODataBulk(sFIFOPacket_t* packets, uint16_t maxP
   if (packets == NULL || maxPackets == 0) {
     return 0;
   }
+
+  // Ensure we're on bank 0 (FIFO registers live in bank 0)
+  uint8_t bank = 0;
+  writeReg(ICM42688_REG_BANK_SEL, &bank, 1);
 
   // Get FIFO byte count
   uint16_t fifoBytes = getFIFOCount();
@@ -524,6 +518,10 @@ uint16_t DFRobot_ICM42688::getFIFODataBulk(sFIFOPacket_t* packets, uint16_t maxP
 
 void DFRobot_ICM42688::refreshSensorData()
 {
+  // Ensure we're on bank 0 (sensor data registers live in bank 0)
+  uint8_t bank = 0;
+  writeReg(ICM42688_REG_BANK_SEL, &bank, 1);
+
   // Read all 14 bytes in one transaction
   uint8_t data[14];
   readReg(ICM42688_TEMP_DATA1, data, 14);
@@ -556,6 +554,10 @@ void DFRobot_ICM42688::refreshSensorData()
 void DFRobot_ICM42688::getAllSensorData(float& accelX, float& accelY, float& accelZ,
                                          float& gyroX, float& gyroY, float& gyroZ, float& temp)
 {
+  // Ensure we're on bank 0 (sensor data registers live in bank 0)
+  uint8_t bank = 0;
+  writeReg(ICM42688_REG_BANK_SEL, &bank, 1);
+
   // Read all 14 bytes in one transaction
   uint8_t data[14];
   readReg(ICM42688_TEMP_DATA1, data, 14);

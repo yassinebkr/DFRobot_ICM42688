@@ -250,8 +250,9 @@ public:
 
   /**
    * @struct sFIFOPacket_t
-   * @brief FIFO packet structure (16 bytes per packet)
-   * @note Used for bulk FIFO reading. Pre-converted to physical units.
+   * @brief Parsed FIFO packet with values pre-converted to physical units.
+   * @note Each raw FIFO packet on the wire is 16 bytes; this struct holds
+   *       the decoded values (struct size differs from raw packet size).
    */
   typedef struct {
     uint8_t header;        ///< Packet header byte
@@ -1119,13 +1120,52 @@ public:
 
   /**
    * @fn refreshSensorData
-   * @brief Read and cache all sensor data for efficient per-axis access
-   * @details Call this once, then use getAccelDataX/Y/Z and getGyroDataX/Y/Z without
-   *          additional I2C/SPI reads. Eliminates redundant reads when accessing
-   *          multiple axes. Provides same performance as reading all axes at once.
-   * @note This updates internal cached values. Per-axis getters will use cached data.
+   * @brief Read and cache all sensor data for the cached read API.
+   * @details Performs a single 14-byte transaction (temp + accel + gyro) and stores
+   *          the converted values internally. Pair with getCachedAccelX/Y/Z and
+   *          getCachedGyroX/Y/Z to access individual axes without additional I2C/SPI
+   *          transactions. Call refreshSensorData() each time you want a fresh sample.
+   * @note The original getAccelDataX/Y/Z and getGyroDataX/Y/Z methods are unchanged
+   *       and always read directly from the sensor; the cache is only consulted by
+   *       the getCached*() methods.
    */
   void refreshSensorData();
+
+  /**
+   * @fn getCachedAccelX / getCachedAccelY / getCachedAccelZ
+   * @brief Return the cached accelerometer values from the last refreshSensorData() call.
+   * @return Acceleration in mg.
+   * @note Returns zero-initialized values until refreshSensorData() is called once.
+   *       Always call refreshSensorData() before reading these to get a fresh sample.
+   */
+  float getCachedAccelX(void);
+  float getCachedAccelY(void);
+  float getCachedAccelZ(void);
+
+  /**
+   * @fn getCachedGyroX / getCachedGyroY / getCachedGyroZ
+   * @brief Return the cached gyroscope values from the last refreshSensorData() call.
+   * @return Angular velocity in dps.
+   * @note Returns zero-initialized values until refreshSensorData() is called once.
+   *       Always call refreshSensorData() before reading these to get a fresh sample.
+   */
+  float getCachedGyroX(void);
+  float getCachedGyroY(void);
+  float getCachedGyroZ(void);
+
+  /**
+   * @fn getCachedTemperature
+   * @brief Return the cached temperature from the last refreshSensorData() call.
+   * @return Temperature in °C.
+   */
+  float getCachedTemperature(void);
+
+  /**
+   * @fn isCacheValid
+   * @brief Check whether refreshSensorData() has been called at least once.
+   * @return true if the cache holds data from a sensor read, false otherwise.
+   */
+  bool isCacheValid(void);
 
   /**
    * @fn getAllSensorData
@@ -1304,8 +1344,8 @@ private:
   int8_t _temp;
   int8_t _INTPin;
 
-  // Performance optimization: Cached sensor data for efficient per-axis access
-  bool _cacheValid;      ///< True if cached data is valid (after refreshSensorData())
+  // Cached sensor data populated by refreshSensorData() and read via getCached*()
+  bool _cacheValid;      ///< True once refreshSensorData() has been called at least once
   float _cachedAccelX;   ///< Cached X-axis acceleration (mg)
   float _cachedAccelY;   ///< Cached Y-axis acceleration (mg)
   float _cachedAccelZ;   ///< Cached Z-axis acceleration (mg)
@@ -1313,9 +1353,6 @@ private:
   float _cachedGyroY;    ///< Cached Y-axis gyro (dps)
   float _cachedGyroZ;    ///< Cached Z-axis gyro (dps)
   float _cachedTemp;     ///< Cached temperature (°C)
-
-  // Helper method for updating cache
-  void _updateScaleFactors();
 
   sAccelConfig0_t accelConfig0;
   sPWRMgmt0_t PWRMgmt0;
