@@ -1,12 +1,15 @@
 /*!
  * @file cachedRead.ino
- * @brief Demonstrates efficient cached reading for per-axis access
+ * @brief Demonstrates efficient cached reading for per-axis access.
  *
- * This example shows two patterns:
- * 1. refreshSensorData() + per-axis getters (efficient per-axis access)
- * 2. getAllSensorData() (single read for all axes)
+ * Two patterns are shown:
+ * 1. refreshSensorData() + getCachedAccelX/Y/Z + getCachedGyroX/Y/Z
+ *    Single transaction, then access any axes from the cache.
  *
- * Both patterns avoid redundant sensor reads when accessing multiple axes.
+ * 2. getAllSensorData() - single transaction, all axes returned by reference.
+ *
+ * Both avoid the redundant per-axis I2C/SPI traffic of calling six separate
+ * getAccelDataX/Y/Z / getGyroDataX/Y/Z methods in a row.
  *
  * @copyright   Copyright (c) 2010 DFRobot Co.Ltd (http://www.dfrobot.com)
  * @license     The MIT License (MIT)
@@ -31,101 +34,72 @@ void setup() {
   Serial.println("ICM42688 Cached Read Example");
   Serial.println("=============================");
 
-  // Initialize sensor
   while (icm.begin() != 0) {
     Serial.println("Failed to initialize sensor! Please check connection.");
     delay(1000);
   }
-  Serial.println("✓ Sensor initialized");
+  Serial.println("Sensor initialized");
 
-  // Configure sensor: 1kHz ODR, ±16g accel, ±2000dps gyro, Low-Noise mode
   icm.setODRAndFSR(ALL, ODR_1KHZ, FSR_0);
   icm.startAccelMeasure(LN_MODE);
   icm.startGyroMeasure(LN_MODE);
 
-  Serial.println("\nDemonstrating two efficient reading patterns:");
-  Serial.println("1. refreshSensorData() + per-axis getters");
-  Serial.println("2. getAllSensorData() (all-in-one)\n");
-
+  Serial.println("\nTwo efficient reading patterns:");
+  Serial.println("  1. refreshSensorData() + getCached*()");
+  Serial.println("  2. getAllSensorData()");
+  Serial.println();
   delay(1000);
 }
 
 void loop() {
-  // =========================================================================
-  // Pattern 1: Cached Read (efficient per-axis access)
-  // =========================================================================
-  Serial.println("═══ Pattern 1: Cached Read ═══");
-
-  // Call refreshSensorData() ONCE
+  // ----- Pattern 1: cached read --------------------------------------------
+  // Refresh the cache once per loop iteration, then read whichever axes you
+  // need. Each getCached*() call returns the value from this single refresh.
   icm.refreshSensorData();
 
-  // Now you can access any axes without additional I2C/SPI reads
-  // This is efficient when you don't need all axes every time
-  float ax = icm.getAccelDataX();  // No I2C read (uses cache)
-  float ay = icm.getAccelDataY();  // No I2C read (uses cache)
-  float az = icm.getAccelDataZ();  // No I2C read (uses cache)
+  float ax = icm.getCachedAccelX();
+  float ay = icm.getCachedAccelY();
+  float az = icm.getCachedAccelZ();
 
-  Serial.print("Accel: X=");
+  Serial.print("[cached] Accel: X=");
   Serial.print(ax, 1);
-  Serial.print(" mg, Y=");
+  Serial.print(" Y=");
   Serial.print(ay, 1);
-  Serial.print(" mg, Z=");
+  Serial.print(" Z=");
   Serial.print(az, 1);
   Serial.println(" mg");
 
-  // You can also conditionally access axes
-  if (abs(ax) > 100) {  // Only read gyro if X accel exceeds threshold
-    float gx = icm.getGyroDataX();  // No I2C read (uses cache)
-    Serial.print("  → X motion detected! Gyro X = ");
+  // Conditional axis access reuses the same cache - no extra I2C traffic.
+  if (abs(ax) > 100) {
+    float gx = icm.getCachedGyroX();
+    Serial.print("  -> motion on X, gyro X = ");
     Serial.print(gx, 2);
     Serial.println(" dps");
   }
 
   delay(500);
 
-  // =========================================================================
-  // Pattern 2: Single All-Data Read (most efficient when you need all axes)
-  // =========================================================================
-  Serial.println("\n═══ Pattern 2: All-Data Read ═══");
-
+  // ----- Pattern 2: getAllSensorData ---------------------------------------
+  // Cleanest option when you always need every axis: one call returns all
+  // seven values via output references (single 14-byte transaction).
   float ax2, ay2, az2, gx2, gy2, gz2, temp;
-
-  // Single I2C/SPI read gets everything (14 bytes)
   icm.getAllSensorData(ax2, ay2, az2, gx2, gy2, gz2, temp);
 
-  Serial.print("Accel: (");
-  Serial.print(ax2, 1);
-  Serial.print(", ");
-  Serial.print(ay2, 1);
-  Serial.print(", ");
-  Serial.print(az2, 1);
-  Serial.println(") mg");
+  Serial.print("[bulk]   Accel=(");
+  Serial.print(ax2, 1); Serial.print(", ");
+  Serial.print(ay2, 1); Serial.print(", ");
+  Serial.print(az2, 1); Serial.print(") mg  Gyro=(");
+  Serial.print(gx2, 2); Serial.print(", ");
+  Serial.print(gy2, 2); Serial.print(", ");
+  Serial.print(gz2, 2); Serial.print(") dps  Temp=");
+  Serial.print(temp, 1); Serial.println(" C");
 
-  Serial.print("Gyro:  (");
-  Serial.print(gx2, 2);
-  Serial.print(", ");
-  Serial.print(gy2, 2);
-  Serial.print(", ");
-  Serial.print(gz2, 2);
-  Serial.println(") dps");
+  Serial.println();
 
-  Serial.print("Temp:  ");
-  Serial.print(temp, 1);
-  Serial.println(" °C");
+  // Note: getAccelDataX/Y/Z and getGyroDataX/Y/Z still work exactly as
+  // before - each call performs its own 2-byte read. Use them when you only
+  // need one axis at a time. For multiple axes per sample, prefer the
+  // patterns above.
 
-  delay(500);
-
-  // =========================================================================
-  // Performance Comparison (informational)
-  // =========================================================================
-  Serial.println("\n═══ Performance Notes ═══");
-  Serial.println("✓ Pattern 1: Flexible per-axis access, single read");
-  Serial.println("✓ Pattern 2: All axes at once, cleanest code");
-  Serial.println("✗ OLD WAY (don't do this):");
-  Serial.println("  ax = getAccelDataX(); // Read 1");
-  Serial.println("  ay = getAccelDataY(); // Read 2");
-  Serial.println("  az = getAccelDataZ(); // Read 3");
-  Serial.println("  → 3x slower! (3 separate I2C transactions)\n");
-
-  delay(2000);
+  delay(1500);
 }
