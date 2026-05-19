@@ -133,6 +133,12 @@ class ICM42688:
         self._temp_raw = 0  # Cached raw temperature value
         self._update_scale_factors()
 
+        # Manual refresh mode: Cached sensor readings for per-axis access
+        self._cached_temp = 0.0
+        self._cached_accel = (0.0, 0.0, 0.0)
+        self._cached_gyro = (0.0, 0.0, 0.0)
+        self._cache_valid = False  # Indicates if cached values are valid
+
         # Initialize the sensor
         self._init_sensor()
 
@@ -502,6 +508,87 @@ class ICM42688:
         return ax, ay, az, gx, gy, gz
 
     # ========================================================================
+    # Manual Refresh Mode (per-axis access without performance penalty)
+    # ========================================================================
+
+    def refresh(self) -> None:
+        """
+        Read and cache all sensor data for per-axis access (manual refresh mode).
+
+        After calling this method, you can access individual axes using properties
+        like `accel_x`, `gyro_z`, etc. without triggering additional sensor reads.
+
+        **Use case**: High-performance loops where you want single read + multiple accesses
+
+        .. code-block:: python
+
+            # Efficient pattern for aerospace applications:
+            while True:
+                icm.refresh()  # Single 14-byte read
+
+                # Access any axes without additional I2C/SPI reads
+                x_accel = icm.accel_x
+                y_accel = icm.accel_y
+                z_gyro = icm.gyro_z
+                temp = icm.temp_cached
+
+                # ... process data ...
+
+        **Performance**: Same as `all_data` - single 14-byte burst read
+        """
+        self._cached_temp, self._cached_accel, self._cached_gyro = self._read_sensor_data()
+        self._cache_valid = True
+
+    @property
+    def accel_x(self) -> float:
+        """X-axis acceleration (m/s²). Call refresh() first."""
+        if not self._cache_valid:
+            raise RuntimeError("Call refresh() before accessing individual axes")
+        return self._cached_accel[0]
+
+    @property
+    def accel_y(self) -> float:
+        """Y-axis acceleration (m/s²). Call refresh() first."""
+        if not self._cache_valid:
+            raise RuntimeError("Call refresh() before accessing individual axes")
+        return self._cached_accel[1]
+
+    @property
+    def accel_z(self) -> float:
+        """Z-axis acceleration (m/s²). Call refresh() first."""
+        if not self._cache_valid:
+            raise RuntimeError("Call refresh() before accessing individual axes")
+        return self._cached_accel[2]
+
+    @property
+    def gyro_x(self) -> float:
+        """X-axis rotation rate (rad/s). Call refresh() first."""
+        if not self._cache_valid:
+            raise RuntimeError("Call refresh() before accessing individual axes")
+        return self._cached_gyro[0]
+
+    @property
+    def gyro_y(self) -> float:
+        """Y-axis rotation rate (rad/s). Call refresh() first."""
+        if not self._cache_valid:
+            raise RuntimeError("Call refresh() before accessing individual axes")
+        return self._cached_gyro[1]
+
+    @property
+    def gyro_z(self) -> float:
+        """Z-axis rotation rate (rad/s). Call refresh() first."""
+        if not self._cache_valid:
+            raise RuntimeError("Call refresh() before accessing individual axes")
+        return self._cached_gyro[2]
+
+    @property
+    def temp_cached(self) -> float:
+        """Cached temperature (°C). Call refresh() first."""
+        if not self._cache_valid:
+            raise RuntimeError("Call refresh() before accessing cached temperature")
+        return self._cached_temp
+
+    # ========================================================================
     # Configuration methods
     # ========================================================================
 
@@ -837,19 +924,17 @@ class ICM42688:
         )
         temp_raw = struct.unpack('>b', bytes([self._buffer[13]]))[0]  # Signed 8-bit
 
-        # Convert to physical units
-        accel_sensitivity = reg.ACCEL_SENSITIVITY[self._accel_range]
+        # Convert to physical units using pre-computed scale factors (OPTIMIZED)
         accel = (
-            (ax_raw / accel_sensitivity) * reg.GRAVITY_EARTH,
-            (ay_raw / accel_sensitivity) * reg.GRAVITY_EARTH,
-            (az_raw / accel_sensitivity) * reg.GRAVITY_EARTH
+            ax_raw * self._accel_scale,
+            ay_raw * self._accel_scale,
+            az_raw * self._accel_scale
         )
 
-        gyro_sensitivity = reg.GYRO_SENSITIVITY[self._gyro_range]
         gyro = (
-            (gx_raw / gyro_sensitivity) * reg.DEG_TO_RAD,
-            (gy_raw / gyro_sensitivity) * reg.DEG_TO_RAD,
-            (gz_raw / gyro_sensitivity) * reg.DEG_TO_RAD
+            gx_raw * self._gyro_scale,
+            gy_raw * self._gyro_scale,
+            gz_raw * self._gyro_scale
         )
 
         # Temperature from FIFO uses different formula: RAW/2.07 + 25
@@ -1212,3 +1297,368 @@ class ICM42688:
         self._write_register_byte(reg.REG_ACCEL_WOM_Z_THR, 0x00)
 
         self._set_bank(0)
+
+    # ========================================================================
+    # Signal Processing Filters (Critical for Aerospace Applications)
+    # ========================================================================
+
+    def set_ui_filter(
+        self,
+        sensor: str,
+        filter_order: int = 1,
+        bandwidth_index: int = 1
+    ) -> None:
+        """
+        Configure UI (User Interface) low-pass filter for software filtering.
+
+        The UI filter provides selectable bandwidth for reducing noise and aliasing.
+        Critical for vibrating platforms (drones, vehicles, machinery).
+
+        :param sensor: "accel", "gyro", or "both"
+        :param filter_order: Filter order (0-3): 0=bypass, 1=1st order, 2=2nd order, 3=3rd order
+        :param bandwidth_index: Bandwidth selector (0-15). Lower = more filtering
+                                0: BW = ODR/2
+                                1: BW = max(400Hz, ODR)/4 (default)
+                                2-7: Progressively narrower
+                                14-15: Low latency options
+
+        .. code-block:: python
+
+            # Aerospace example: 2nd order filter, moderate bandwidth
+            icm.set_ui_filter("both", filter_order=2, bandwidth_index=3)
+
+            # High-rate low-latency: 1st order, wide bandwidth
+            icm.set_ui_filter("both", filter_order=1, bandwidth_index=14)
+
+        **References**: ICM42688 datasheet sections 6.3-6.4
+        """
+        if sensor not in ("accel", "gyro", "both"):
+            raise ValueError("Sensor must be 'accel', 'gyro', or 'both'")
+        if filter_order < 0 or filter_order > 3:
+            raise ValueError("Filter order must be 0-3")
+        if bandwidth_index < 0 or bandwidth_index > 15:
+            raise ValueError("Bandwidth index must be 0-15")
+
+        self._set_bank(0)
+
+        if sensor in ("gyro", "both"):
+            # Configure gyro UI filter order (GYRO_CONFIG1, bits 2-3)
+            gyro_config1 = self._read_register_byte(reg.REG_GYRO_CONFIG1)
+            gyro_config1 = (gyro_config1 & 0xF3) | (filter_order << 2)
+            self._write_register_byte(reg.REG_GYRO_CONFIG1, gyro_config1)
+
+            # Configure gyro UI filter bandwidth (GYRO_ACCEL_CONFIG0, bits 0-3)
+            gyro_accel_config0 = self._read_register_byte(reg.REG_GYRO_ACCEL_CONFIG0)
+            gyro_accel_config0 = (gyro_accel_config0 & 0xF0) | (bandwidth_index & 0x0F)
+            self._write_register_byte(reg.REG_GYRO_ACCEL_CONFIG0, gyro_accel_config0)
+
+        if sensor in ("accel", "both"):
+            # Configure accel UI filter order (ACCEL_CONFIG1, bits 1-2)
+            accel_config1 = self._read_register_byte(reg.REG_ACCEL_CONFIG1)
+            accel_config1 = (accel_config1 & 0xF9) | (filter_order << 1)
+            self._write_register_byte(reg.REG_ACCEL_CONFIG1, accel_config1)
+
+            # Configure accel UI filter bandwidth (GYRO_ACCEL_CONFIG0, bits 4-7)
+            gyro_accel_config0 = self._read_register_byte(reg.REG_GYRO_ACCEL_CONFIG0)
+            gyro_accel_config0 = (gyro_accel_config0 & 0x0F) | (bandwidth_index << 4)
+            self._write_register_byte(reg.REG_GYRO_ACCEL_CONFIG0, gyro_accel_config0)
+
+        time.sleep(reg.CONFIG_CHANGE_DELAY)
+
+    def set_aaf_filter(
+        self,
+        sensor: str,
+        enabled: bool = True,
+        bandwidth_index: int = 15
+    ) -> None:
+        """
+        Configure Anti-Aliasing Filter (AAF) for hardware filtering.
+
+        AAF is a hardware analog filter that rejects high-frequency noise above
+        the Nyquist frequency. Essential for aerospace to prevent aliasing artifacts.
+
+        :param sensor: "accel", "gyro", or "both"
+        :param enabled: True to enable AAF, False to disable
+        :param bandwidth_index: AAF bandwidth (1-63). Higher = wider bandwidth
+                                1: ~42 Hz (max filtering)
+                                15: ~213 Hz (moderate, default)
+                                42: ~536 Hz (minimal filtering)
+                                63: Max bandwidth
+
+        .. code-block:: python
+
+            # Enable AAF with moderate filtering (aerospace typical)
+            icm.set_aaf_filter("both", enabled=True, bandwidth_index=15)
+
+            # Disable AAF for maximum bandwidth (low-vibration environments)
+            icm.set_aaf_filter("both", enabled=False)
+
+        **Critical**: AAF must be enabled when ODR > 1kHz to prevent aliasing.
+        **References**: ICM42688 datasheet section 6.2
+        """
+        if sensor not in ("accel", "gyro", "both"):
+            raise ValueError("Sensor must be 'accel', 'gyro', or 'both'")
+        if bandwidth_index < 1 or bandwidth_index > 63:
+            raise ValueError("Bandwidth index must be 1-63")
+
+        aaf_deltsqr = bandwidth_index * bandwidth_index
+
+        # Map bandwidth index to bitshift value (from Arduino library)
+        if bandwidth_index == 1:
+            bitshift = 15
+        elif bandwidth_index == 2:
+            bitshift = 13
+        elif bandwidth_index == 3:
+            bitshift = 12
+        elif bandwidth_index == 4:
+            bitshift = 11
+        elif bandwidth_index <= 6:
+            bitshift = 10
+        elif bandwidth_index < 10:
+            bitshift = 9
+        elif bandwidth_index < 14:
+            bitshift = 8
+        elif bandwidth_index < 19:
+            bitshift = 7
+        elif bandwidth_index < 27:
+            bitshift = 6
+        elif bandwidth_index < 37:
+            bitshift = 5
+        elif bandwidth_index < 53:
+            bitshift = 4
+        else:  # 53-63
+            bitshift = 3
+
+        if sensor in ("gyro", "both"):
+            # Configure gyro AAF (Bank 1)
+            self._set_bank(1)
+
+            # GYRO_CONFIG_STATIC3: AAF delta
+            self._write_register_byte(reg.REG_GYRO_CONFIG_STATIC3, bandwidth_index)
+
+            # GYRO_CONFIG_STATIC4: AAF delta squared (low byte)
+            self._write_register_byte(reg.REG_GYRO_CONFIG_STATIC4, aaf_deltsqr & 0xFF)
+
+            # GYRO_CONFIG_STATIC5: AAF delta squared (high 4 bits) + bitshift
+            config_static5 = ((aaf_deltsqr >> 8) & 0x0F) | (bitshift << 4)
+            self._write_register_byte(reg.REG_GYRO_CONFIG_STATIC5, config_static5)
+
+            # GYRO_CONFIG_STATIC2: Enable/disable AAF (bit 1)
+            config_static2 = self._read_register_byte(reg.REG_GYRO_CONFIG_STATIC2)
+            if enabled:
+                config_static2 &= ~0x02  # Clear bit 1 to enable
+            else:
+                config_static2 |= 0x02  # Set bit 1 to disable
+            self._write_register_byte(reg.REG_GYRO_CONFIG_STATIC2, config_static2)
+
+        if sensor in ("accel", "both"):
+            # Configure accel AAF (Bank 2)
+            self._set_bank(2)
+
+            # ACCEL_CONFIG_STATIC2: AAF delta + enable/disable (bit 0)
+            config_static2 = (bandwidth_index << 1)
+            if not enabled:
+                config_static2 |= 0x01  # Set bit 0 to disable
+            self._write_register_byte(reg.REG_ACCEL_CONFIG_STATIC2, config_static2)
+
+            # ACCEL_CONFIG_STATIC3: AAF delta squared (low byte)
+            self._write_register_byte(reg.REG_ACCEL_CONFIG_STATIC3, aaf_deltsqr & 0xFF)
+
+            # ACCEL_CONFIG_STATIC4: AAF delta squared (high 4 bits) + bitshift
+            config_static4 = ((aaf_deltsqr >> 8) & 0x0F) | (bitshift << 4)
+            self._write_register_byte(reg.REG_ACCEL_CONFIG_STATIC4, config_static4)
+
+        self._set_bank(0)
+        time.sleep(reg.CONFIG_CHANGE_DELAY)
+
+    def set_gyro_notch_filter(
+        self,
+        frequency_hz: Optional[float] = None,
+        bandwidth: int = 1,
+        axis: str = "all"
+    ) -> None:
+        """
+        Configure gyroscope notch filter to reject specific vibration frequencies.
+
+        The notch filter is critical for rejecting known vibration sources like
+        propeller harmonics, engine vibrations, or machinery resonances.
+
+        :param frequency_hz: Notch center frequency in Hz (e.g., 120.0 for 120 Hz propeller)
+                             If None, disables the notch filter
+        :param bandwidth: Notch bandwidth (0-3). Higher = wider rejection
+                          0: Narrowest (Q=1)
+                          1: Moderate (default)
+                          2-3: Wider
+        :param axis: "x", "y", "z", or "all" - which axes to apply notch filter
+
+        .. code-block:: python
+
+            # Reject 120 Hz propeller vibration on all axes
+            icm.set_gyro_notch_filter(frequency_hz=120.0, bandwidth=1, axis="all")
+
+            # Reject 60 Hz power line noise on Z-axis only
+            icm.set_gyro_notch_filter(frequency_hz=60.0, bandwidth=0, axis="z")
+
+            # Disable notch filter
+            icm.set_gyro_notch_filter(frequency_hz=None)
+
+        **Typical aerospace frequencies**:
+        - Propellers: 60-300 Hz (depends on RPM)
+        - Quadcopter: 120-240 Hz
+        - Fixed-wing: 80-150 Hz
+        - Vehicle engine: 20-100 Hz
+
+        **References**: ICM42688 datasheet section 6.5
+        """
+        if axis not in ("x", "y", "z", "all"):
+            raise ValueError("Axis must be 'x', 'y', 'z', or 'all'")
+        if bandwidth < 0 or bandwidth > 3:
+            raise ValueError("Bandwidth must be 0-3")
+
+        self._set_bank(1)
+
+        # Disable or enable notch filter (GYRO_CONFIG_STATIC2, bit 0)
+        config_static2 = self._read_register_byte(reg.REG_GYRO_CONFIG_STATIC2)
+        if frequency_hz is None:
+            # Disable notch filter
+            config_static2 |= 0x01  # Set bit 0 to disable
+            self._write_register_byte(reg.REG_GYRO_CONFIG_STATIC2, config_static2)
+            self._set_bank(0)
+            return
+
+        # Enable notch filter
+        config_static2 &= ~0x01  # Clear bit 0 to enable
+        self._write_register_byte(reg.REG_GYRO_CONFIG_STATIC2, config_static2)
+
+        # Calculate notch filter coefficient
+        # Formula: coswz = cos(2 * π * f_desired / 32000)
+        # where f_desired is in Hz
+        import math
+        coswz = math.cos(2 * math.pi * frequency_hz / 32000.0)
+
+        # Encode coswz based on magnitude
+        if abs(coswz) <= 0.875:
+            nf_coswz = round(coswz * 256)
+            nf_coswz_sel = 0
+        else:
+            nf_coswz_sel = 1
+            if coswz > 0.875:
+                nf_coswz = round(8 * (1 - coswz) * 256)
+            else:  # coswz < -0.875
+                nf_coswz = round(-8 * (1 + coswz) * 256)
+
+        # Clamp to int16 range
+        nf_coswz = max(-32768, min(32767, int(nf_coswz)))
+        nf_coswz_low = nf_coswz & 0xFF
+        nf_coswz_high = (nf_coswz >> 8) & 0xFF
+
+        # Read GYRO_CONFIG_STATIC9 for storing high bits and sel flags
+        config_static9 = self._read_register_byte(reg.REG_GYRO_CONFIG_STATIC9)
+
+        # Apply to specified axis/axes
+        if axis in ("x", "all"):
+            self._write_register_byte(reg.REG_GYRO_CONFIG_STATIC6, nf_coswz_low)
+            config_static9 = (config_static9 & 0xF0) | (nf_coswz_sel & 0x01) | ((nf_coswz_high & 0x01) << 1)
+
+        if axis in ("y", "all"):
+            self._write_register_byte(reg.REG_GYRO_CONFIG_STATIC7, nf_coswz_low)
+            config_static9 = (config_static9 & 0x0F) | ((nf_coswz_sel & 0x01) << 4) | ((nf_coswz_high & 0x01) << 5)
+
+        if axis in ("z", "all"):
+            self._write_register_byte(reg.REG_GYRO_CONFIG_STATIC8, nf_coswz_low)
+            config_static9 = (config_static9 & 0x3F) | ((nf_coswz_sel & 0x01) << 6) | ((nf_coswz_high & 0x01) << 7)
+
+        self._write_register_byte(reg.REG_GYRO_CONFIG_STATIC9, config_static9)
+
+        # Configure notch bandwidth (GYRO_CONFIG_STATIC10)
+        bandwidth_config = (bandwidth << 4) | 0x01
+        self._write_register_byte(reg.REG_GYRO_CONFIG_STATIC10, bandwidth_config)
+
+        self._set_bank(0)
+        time.sleep(reg.CONFIG_CHANGE_DELAY)
+
+    def read_fifo_bulk(self, max_packets: int = 128) -> list:
+        """
+        Read multiple FIFO packets in bulk (high-performance batch read).
+
+        Instead of reading one packet at a time with read_fifo(), this method
+        reads all available packets in a single operation, dramatically improving
+        throughput for data logging and high-rate applications.
+
+        :param max_packets: Maximum number of packets to read (default 128 = entire FIFO)
+        :return: List of packet dictionaries (same format as read_fifo())
+
+        .. code-block:: python
+
+            # Enable FIFO
+            icm.enable_fifo(accel=True, gyro=True, temp=True)
+
+            # Batch read for data logging
+            while True:
+                time.sleep(0.1)  # Collect 100ms of data
+
+                # Read all accumulated packets at once
+                packets = icm.read_fifo_bulk(max_packets=64)
+
+                print(f"Read {len(packets)} packets")
+                for packet in packets:
+                    log_to_file(packet['accel'], packet['gyro'], packet['temp'])
+
+        **Performance**: 10-100x faster than calling read_fifo() in a loop.
+        **Use cases**: Data logging, SD card writes, batch processing, ML training data
+        """
+        self._set_bank(0)
+
+        # Read FIFO count
+        fifo_bytes = self.fifo_count
+
+        # Calculate number of packets (16 bytes each in basic mode)
+        packet_size = 16
+        num_packets = min(fifo_bytes // packet_size, max_packets)
+
+        if num_packets == 0:
+            return []
+
+        # Read all packets in one large transaction
+        bulk_size = num_packets * packet_size
+        bulk_buffer = bytearray(bulk_size)
+        self._read_register_bytes(reg.REG_FIFO_DATA, bulk_size, bulk_buffer)
+
+        # Parse packets
+        packets = []
+        for i in range(num_packets):
+            offset = i * packet_size
+
+            # Extract packet data
+            header = bulk_buffer[offset]
+
+            # Unpack accel and gyro (big-endian signed 16-bit)
+            ax, ay, az, gx, gy, gz = struct.unpack(
+                '>6h', bulk_buffer[offset + 1:offset + 13]
+            )
+            temp_raw = struct.unpack('>b', bytes([bulk_buffer[offset + 13]]))[0]
+
+            # Convert using pre-computed scale factors (OPTIMIZED)
+            accel = (
+                ax * self._accel_scale,
+                ay * self._accel_scale,
+                az * self._accel_scale
+            )
+
+            gyro = (
+                gx * self._gyro_scale,
+                gy * self._gyro_scale,
+                gz * self._gyro_scale
+            )
+
+            # Temperature from FIFO: RAW/2.07 + 25
+            temperature = (temp_raw / 2.07) + 25.0
+
+            packets.append({
+                'header': header,
+                'accel': accel,
+                'gyro': gyro,
+                'temp': temperature
+            })
+
+        return packets
