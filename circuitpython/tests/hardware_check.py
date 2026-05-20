@@ -127,13 +127,13 @@ else:
     print("  Expected ~±9.8 m/s² if board is stationary")
     print("  Sensor may need calibration or board is moving")
 
-# Check gyro is near zero (stationary)
+# Check gyro is near zero (stationary). Library returns rad/s.
 gx, gy, gz = gyro
 gyro_mag = (gx**2 + gy**2 + gz**2)**0.5
 if gyro_mag < 5.0:
-    print(f"✓ Gyro readings near zero: {gyro_mag:.2f} dps (board stationary)")
+    print(f"✓ Gyro readings near zero: {gyro_mag:.2f} rad/s (board stationary)")
 else:
-    print(f"⚠ Gyro readings high: {gyro_mag:.2f} dps")
+    print(f"⚠ Gyro readings high: {gyro_mag:.2f} rad/s")
     print("  Board may be moving or needs calibration")
 
 # Check temperature is reasonable
