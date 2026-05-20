@@ -311,13 +311,15 @@ def test_all_data_property(icm, results):
         temp, accel, gyro = icm.all_data
         results.record_pass("9.1: all_data works without refresh()")
 
-        time.sleep(0.01)
-        temp2, accel2, gyro2 = icm.all_data
-        if accel != accel2 or gyro != gyro2:
-            results.record_pass("9.2: all_data reads fresh data each time")
+        # 9.2: values must be physically plausible (real assertion, not a no-op).
+        # Stationary board: temp roughly room/sensor temp, |accel| ~ 1 g.
+        mag = (accel[0]**2 + accel[1]**2 + accel[2]**2) ** 0.5
+        plausible = (0.0 < temp < 70.0) and (5.0 < mag < 15.0)
+        if plausible:
+            results.record_pass(f"9.2: all_data values plausible (temp={temp:.1f}C, |a|={mag:.2f})")
         else:
-            print(f"{YELLOW}!{RESET} 9.2: all_data values identical (possible if very still)")
-            results.record_pass("9.2: all_data returns data")
+            results.record_fail("9.2: all_data values plausible",
+                              f"temp={temp:.1f}C, |accel|={mag:.2f} m/s^2 (board must be still)")
     except Exception as e:
         results.record_fail("9.1-9.2: all_data property", str(e))
 
@@ -362,18 +364,21 @@ def test_edge_cases(icm, results):
     except Exception as e:
         results.record_fail("11.1: Multiple refresh() calls", str(e))
 
-    # 11.2: Non-cached read does NOT invalidate the cache
+    # 11.2: cached value is a frozen snapshot, not live data. Several live
+    # (non-cached) reads in between must NOT change the cached value at all.
     try:
         icm.refresh()
         x_cached = icm.accel_x
-        _ = icm.acceleration  # non-cached read
-        x_cached2 = icm.accel_x  # should still be cached, unchanged
+        for _ in range(5):
+            _ = icm.acceleration  # live reads; sensor noise changes these
+        x_cached2 = icm.accel_x  # must be byte-for-byte identical
         if x_cached == x_cached2:
-            results.record_pass("11.2: Cached values persist across non-cached reads")
+            results.record_pass("11.2: cached value is a frozen snapshot across live reads")
         else:
-            results.record_fail("11.2: Cached values persist", f"{x_cached} != {x_cached2}")
+            results.record_fail("11.2: snapshot semantics",
+                              f"cached value drifted: {x_cached} != {x_cached2}")
     except Exception as e:
-        results.record_fail("11.2: Interleaved reads", str(e))
+        results.record_fail("11.2: snapshot semantics", str(e))
 
     # 11.3: invalidate_cache() method directly
     try:
@@ -455,6 +460,45 @@ def test_real_world_usage(icm, results):
         results.record_fail("12.3: Mixed usage", str(e))
 
 
+def test_scale_correctness(icm, results):
+    """
+    Verify the converted gravity vector stays ~1 g across all accel ranges.
+
+    Changing the range changes the raw LSB/g, and the library must update its
+    scale factor so the reported m/s^2 stays consistent. If a range change
+    failed to update the scale (a bug class adjacent to the cache fix, since
+    both happen in the same setter), the magnitude would jump by up to 8x.
+
+    Board must be stationary for this test.
+    """
+    print_header("Test 13: Scale-Factor Correctness Across Ranges")
+
+    GRAVITY = 9.80665
+    ranges = [
+        (reg.ACCEL_RANGE_2G, "+/-2g"),
+        (reg.ACCEL_RANGE_4G, "+/-4g"),
+        (reg.ACCEL_RANGE_8G, "+/-8g"),
+        (reg.ACCEL_RANGE_16G, "+/-16g"),
+    ]
+    try:
+        for code, label in ranges:
+            icm.accelerometer_range = code
+            time.sleep(0.02)
+            icm.refresh()
+            ax, ay, az = icm.accel_x, icm.accel_y, icm.accel_z
+            mag = (ax*ax + ay*ay + az*az) ** 0.5
+            # Generous tolerance: catches an 8x scale error, tolerates board tilt.
+            if abs(mag - GRAVITY) < 2.0:
+                results.record_pass(f"13: {label} -> |accel|={mag:.2f} m/s^2 (~1 g)")
+            else:
+                results.record_fail(f"13: {label} scale correctness",
+                                  f"|accel|={mag:.2f} m/s^2, expected ~{GRAVITY:.2f} (board still?)")
+    except Exception as e:
+        results.record_fail("13: scale correctness", str(e))
+    finally:
+        icm.accelerometer_range = reg.ACCEL_RANGE_16G  # restore default
+
+
 def run_all_tests():
     """Run comprehensive test suite"""
     print("\n" + "="*70)
@@ -485,6 +529,7 @@ def run_all_tests():
     test_acceleration_gyro_properties(icm, results)
     test_edge_cases(icm, results)
     test_real_world_usage(icm, results)
+    test_scale_correctness(icm, results)
 
     success = results.summary()
 
