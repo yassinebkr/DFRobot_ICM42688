@@ -1410,6 +1410,9 @@ class ICM42688:
 
         time.sleep(reg.CONFIG_CHANGE_DELAY)
 
+        # UI filter changes data path; invalidate cache for consistency.
+        self._cache_valid = False
+
     def set_aaf_filter(
         self,
         sensor: str,
@@ -1516,6 +1519,9 @@ class ICM42688:
         self._set_bank(0)
         time.sleep(reg.CONFIG_CHANGE_DELAY)
 
+        # AAF changes data path; invalidate cache for consistency.
+        self._cache_valid = False
+
     def set_gyro_notch_filter(
         self,
         frequency_hz: Optional[float] = None,
@@ -1621,6 +1627,9 @@ class ICM42688:
 
         self._set_bank(0)
         time.sleep(reg.CONFIG_CHANGE_DELAY)
+
+        # Notch filter changes data path; invalidate cache for consistency.
+        self._cache_valid = False
 
     def read_fifo_bulk(self, max_packets: int = 128) -> list:
         """

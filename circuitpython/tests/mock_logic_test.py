@@ -267,17 +267,34 @@ def main():
         except Exception as e:
             r.bad(f"{name}: refresh recovery", str(e))
 
-    # Filter setters (the design-gap question): do they invalidate?
-    print("\n[Filter setters - currently expected NOT to invalidate]")
+    # Filter setters should also invalidate for consistency
+    print("\n[Filter setter invalidation]")
     for name, trigger in [
         ("set_ui_filter", lambda: icm.set_ui_filter("both", filter_order=2, bandwidth_index=3)),
         ("set_aaf_filter", lambda: icm.set_aaf_filter("both", enabled=True, bandwidth_index=15)),
         ("set_gyro_notch_filter", lambda: icm.set_gyro_notch_filter(frequency_hz=120.0, axis="all")),
     ]:
         icm.refresh()
-        trigger()
-        still_valid = not raises_runtime(lambda: icm.accel_x)
-        print(f"  INFO  after {name}: cache still valid = {still_valid}")
+        try:
+            _ = icm.accel_x  # valid now
+        except Exception as e:
+            r.bad(f"{name}: pre-trigger refresh", str(e))
+            continue
+        try:
+            trigger()
+        except Exception as e:
+            r.bad(f"{name}: trigger call", str(e))
+            continue
+        if raises_runtime(lambda: icm.accel_x):
+            r.ok(f"{name} invalidates cache")
+        else:
+            r.bad(f"{name} invalidates cache", "cache still valid after trigger")
+        # confirm recovery
+        try:
+            icm.refresh()
+            _ = icm.accel_x
+        except Exception as e:
+            r.bad(f"{name}: refresh recovery", str(e))
 
     # Non-cached APIs independent of cache
     print("\n[Non-cached APIs ignore cache state]")
