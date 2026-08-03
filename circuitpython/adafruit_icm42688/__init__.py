@@ -518,13 +518,19 @@ class ICM42688:
         After calling this method, you can access individual axes using properties
         like `accel_x`, `gyro_z`, etc. without triggering additional sensor reads.
 
+        **Important**: cached values are only as fresh as your last `refresh()` call.
+        Call `refresh()` at the top of every loop iteration to keep them up to date.
+        Configuration changes (range, ODR, power mode, FIFO toggle, reset) automatically
+        invalidate the cache, so the next per-axis access raises RuntimeError until you
+        call `refresh()` again.
+
         **Use case**: High-performance loops where you want single read + multiple accesses
 
         .. code-block:: python
 
             # Efficient pattern for aerospace applications:
             while True:
-                icm.refresh()  # Single 14-byte read
+                icm.refresh()  # Single 14-byte read - call EVERY iteration
 
                 # Access any axes without additional I2C/SPI reads
                 x_accel = icm.accel_x
@@ -538,6 +544,21 @@ class ICM42688:
         """
         self._cached_temp, self._cached_accel, self._cached_gyro = self._read_sensor_data()
         self._cache_valid = True
+
+    def invalidate_cache(self) -> None:
+        """
+        Mark the per-axis cache as stale.
+
+        After calling this, the cached properties (`accel_x`, `gyro_z`, etc.) will
+        raise RuntimeError until `refresh()` is called again. This is called
+        automatically by configuration setters (range, ODR, power mode, FIFO,
+        reset) so the user normally does not need to call it directly.
+
+        Use this if you want to force the next per-axis access to fail unless
+        you've called refresh() since (e.g. as a defensive check in long-running
+        code paths).
+        """
+        self._cache_valid = False
 
     @property
     def accel_x(self) -> float:
@@ -625,6 +646,9 @@ class ICM42688:
         # Update pre-computed scale factor for new range
         self._update_scale_factors()
 
+        # Cached values were computed with the old scale; invalidate them.
+        self._cache_valid = False
+
     @property
     def gyro_range(self) -> int:
         """
@@ -660,6 +684,9 @@ class ICM42688:
         # Update pre-computed scale factor for new range
         self._update_scale_factors()
 
+        # Cached values were computed with the old scale; invalidate them.
+        self._cache_valid = False
+
     @property
     def accelerometer_data_rate(self) -> int:
         """Accelerometer output data rate (ODR)."""
@@ -685,6 +712,9 @@ class ICM42688:
 
         self._accel_odr = value
 
+        # ODR change can affect data path / filter behaviour; invalidate cache.
+        self._cache_valid = False
+
     @property
     def gyro_data_rate(self) -> int:
         """Gyroscope output data rate (ODR)."""
@@ -709,6 +739,9 @@ class ICM42688:
         self._write_register_byte(reg.REG_GYRO_CONFIG0, new_config)
 
         self._gyro_odr = value
+
+        # ODR change can affect data path / filter behaviour; invalidate cache.
+        self._cache_valid = False
 
     def set_power_mode(
         self,
@@ -767,6 +800,9 @@ class ICM42688:
         if gyro_mode == reg.GYRO_MODE_LN:
             time.sleep(reg.GYRO_STARTUP_TIME)
 
+        # Power mode change can disable a sensor or alter data path; invalidate cache.
+        self._cache_valid = False
+
     def reset(self) -> None:
         """
         Perform a soft reset of the sensor.
@@ -784,6 +820,9 @@ class ICM42688:
         self._gyro_range = reg.GYRO_RANGE_2000_DPS
         self._accel_odr = reg.ODR_1KHZ
         self._gyro_odr = reg.ODR_1KHZ
+
+        # Reset wipes the sensor configuration; cached values no longer apply.
+        self._cache_valid = False
 
         # Re-initialize with default settings
         self._init_sensor()
@@ -850,12 +889,18 @@ class ICM42688:
 
         self._write_register_byte(reg.REG_FIFO_CONFIG, fifo_mode)
 
+        # FIFO mode changes how subsequent data should be read; invalidate cache.
+        self._cache_valid = False
+
     def disable_fifo(self) -> None:
         """
         Disable the FIFO buffer and set to bypass mode.
         """
         self._set_bank(0)
         self._write_register_byte(reg.REG_FIFO_CONFIG, reg.FIFO_MODE_BYPASS)
+
+        # FIFO mode changes how subsequent data should be read; invalidate cache.
+        self._cache_valid = False
 
     def flush_fifo(self) -> None:
         """
@@ -1365,6 +1410,9 @@ class ICM42688:
 
         time.sleep(reg.CONFIG_CHANGE_DELAY)
 
+        # UI filter changes data path; invalidate cache for consistency.
+        self._cache_valid = False
+
     def set_aaf_filter(
         self,
         sensor: str,
@@ -1471,6 +1519,9 @@ class ICM42688:
         self._set_bank(0)
         time.sleep(reg.CONFIG_CHANGE_DELAY)
 
+        # AAF changes data path; invalidate cache for consistency.
+        self._cache_valid = False
+
     def set_gyro_notch_filter(
         self,
         frequency_hz: Optional[float] = None,
@@ -1576,6 +1627,9 @@ class ICM42688:
 
         self._set_bank(0)
         time.sleep(reg.CONFIG_CHANGE_DELAY)
+
+        # Notch filter changes data path; invalidate cache for consistency.
+        self._cache_valid = False
 
     def read_fifo_bulk(self, max_packets: int = 128) -> list:
         """

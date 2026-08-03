@@ -19,6 +19,16 @@ DFRobot_ICM42688::DFRobot_ICM42688()
   _gyroRange = 4000/65535.0;
   _accelRange = 0.488f;
   FIFOMode = false;
+
+  // Initialize cache for efficient per-axis access
+  _cacheValid = false;
+  _cachedAccelX = 0.0f;
+  _cachedAccelY = 0.0f;
+  _cachedAccelZ = 0.0f;
+  _cachedGyroX = 0.0f;
+  _cachedGyroY = 0.0f;
+  _cachedGyroZ = 0.0f;
+  _cachedTemp = 0.0f;
 }
 
 int DFRobot_ICM42688::begin(void)
@@ -138,6 +148,23 @@ float DFRobot_ICM42688::getGyroDataZ(void)
   }
   return value*_gyroRange;
 }
+
+// =========================================================================
+// Cached read API (use after refreshSensorData())
+// =========================================================================
+// These return values cached by the most recent refreshSensorData() call.
+// Use this API when you need multiple axes from the same sample without
+// triggering one I2C/SPI transaction per axis. Always pair with
+// refreshSensorData() each time you want fresh data.
+
+float DFRobot_ICM42688::getCachedAccelX(void) { return _cachedAccelX; }
+float DFRobot_ICM42688::getCachedAccelY(void) { return _cachedAccelY; }
+float DFRobot_ICM42688::getCachedAccelZ(void) { return _cachedAccelZ; }
+float DFRobot_ICM42688::getCachedGyroX(void)  { return _cachedGyroX; }
+float DFRobot_ICM42688::getCachedGyroY(void)  { return _cachedGyroY; }
+float DFRobot_ICM42688::getCachedGyroZ(void)  { return _cachedGyroZ; }
+float DFRobot_ICM42688::getCachedTemperature(void) { return _cachedTemp; }
+bool  DFRobot_ICM42688::isCacheValid(void) { return _cacheValid; }
 
 void DFRobot_ICM42688:: tapDetectionInit(uint8_t accelMode)
 {
@@ -391,6 +418,173 @@ void DFRobot_ICM42688::getFIFOData()
   _temp = (uint8_t)data[13];
   //DBG("_temp");DBG(data[13]);
 }
+
+uint16_t DFRobot_ICM42688::getFIFOCount()
+{
+  uint8_t bank = 0;
+  writeReg(ICM42688_REG_BANK_SEL, &bank, 1);
+
+  uint8_t data[2];
+  readReg(ICM42688_FIFO_COUNTH, data, 2);
+  return ((uint16_t)data[0] << 8) | (uint16_t)data[1];
+}
+
+uint16_t DFRobot_ICM42688::getFIFODataBulk(sFIFOPacket_t* packets, uint16_t maxPackets)
+{
+  if (packets == NULL || maxPackets == 0) {
+    return 0;
+  }
+
+  // Ensure we're on bank 0 (FIFO registers live in bank 0)
+  uint8_t bank = 0;
+  writeReg(ICM42688_REG_BANK_SEL, &bank, 1);
+
+  // Get FIFO byte count
+  uint16_t fifoBytes = getFIFOCount();
+  uint16_t availablePackets = fifoBytes / 16;  // 16 bytes per packet
+
+  // Limit to maxPackets
+  uint16_t numPackets = (availablePackets < maxPackets) ? availablePackets : maxPackets;
+
+  if (numPackets == 0) {
+    return 0;
+  }
+
+  // Read all packets in one large transaction
+  uint16_t bulkSize = numPackets * 16;
+  uint8_t* bulkBuffer = (uint8_t*)malloc(bulkSize);
+
+  if (bulkBuffer == NULL) {
+    // Fallback: read one packet at a time if malloc fails
+    for (uint16_t i = 0; i < numPackets; i++) {
+      uint8_t data[16];
+      readReg(ICM42688_FIFO_DATA, data, 16);
+
+      // Parse packet
+      packets[i].header = data[0];
+
+      // Extract raw int16 values
+      int16_t ax = ((int16_t)data[1] << 8) | data[2];
+      int16_t ay = ((int16_t)data[3] << 8) | data[4];
+      int16_t az = ((int16_t)data[5] << 8) | data[6];
+      int16_t gx = ((int16_t)data[7] << 8) | data[8];
+      int16_t gy = ((int16_t)data[9] << 8) | data[10];
+      int16_t gz = ((int16_t)data[11] << 8) | data[12];
+      int8_t temp_raw = (int8_t)data[13];
+
+      // Convert to physical units
+      packets[i].accelX = ax * _accelRange;
+      packets[i].accelY = ay * _accelRange;
+      packets[i].accelZ = az * _accelRange;
+      packets[i].gyroX = gx * _gyroRange;
+      packets[i].gyroY = gy * _gyroRange;
+      packets[i].gyroZ = gz * _gyroRange;
+      packets[i].temperature = (temp_raw / 2.07f) + 25.0f;
+    }
+    return numPackets;
+  }
+
+  // Bulk read all packets at once
+  readReg(ICM42688_FIFO_DATA, bulkBuffer, bulkSize);
+
+  // Parse all packets
+  for (uint16_t i = 0; i < numPackets; i++) {
+    uint16_t offset = i * 16;
+
+    packets[i].header = bulkBuffer[offset];
+
+    // Extract raw int16 values (big-endian)
+    int16_t ax = ((int16_t)bulkBuffer[offset + 1] << 8) | bulkBuffer[offset + 2];
+    int16_t ay = ((int16_t)bulkBuffer[offset + 3] << 8) | bulkBuffer[offset + 4];
+    int16_t az = ((int16_t)bulkBuffer[offset + 5] << 8) | bulkBuffer[offset + 6];
+    int16_t gx = ((int16_t)bulkBuffer[offset + 7] << 8) | bulkBuffer[offset + 8];
+    int16_t gy = ((int16_t)bulkBuffer[offset + 9] << 8) | bulkBuffer[offset + 10];
+    int16_t gz = ((int16_t)bulkBuffer[offset + 11] << 8) | bulkBuffer[offset + 12];
+    int8_t temp_raw = (int8_t)bulkBuffer[offset + 13];
+
+    // Convert to physical units
+    packets[i].accelX = ax * _accelRange;
+    packets[i].accelY = ay * _accelRange;
+    packets[i].accelZ = az * _accelRange;
+    packets[i].gyroX = gx * _gyroRange;
+    packets[i].gyroY = gy * _gyroRange;
+    packets[i].gyroZ = gz * _gyroRange;
+    packets[i].temperature = (temp_raw / 2.07f) + 25.0f;
+  }
+
+  free(bulkBuffer);
+  return numPackets;
+}
+
+void DFRobot_ICM42688::refreshSensorData()
+{
+  // Ensure we're on bank 0 (sensor data registers live in bank 0)
+  uint8_t bank = 0;
+  writeReg(ICM42688_REG_BANK_SEL, &bank, 1);
+
+  // Read all 14 bytes in one transaction
+  uint8_t data[14];
+  readReg(ICM42688_TEMP_DATA1, data, 14);
+
+  // Parse temperature
+  int16_t temp_raw = ((int16_t)data[0] << 8) | data[1];
+  _cachedTemp = (temp_raw / 132.48f) + 25.0f;
+
+  // Parse accelerometer (big-endian int16)
+  int16_t ax = ((int16_t)data[2] << 8) | data[3];
+  int16_t ay = ((int16_t)data[4] << 8) | data[5];
+  int16_t az = ((int16_t)data[6] << 8) | data[7];
+
+  // Parse gyroscope (big-endian int16)
+  int16_t gx = ((int16_t)data[8] << 8) | data[9];
+  int16_t gy = ((int16_t)data[10] << 8) | data[11];
+  int16_t gz = ((int16_t)data[12] << 8) | data[13];
+
+  // Convert to physical units
+  _cachedAccelX = ax * _accelRange;
+  _cachedAccelY = ay * _accelRange;
+  _cachedAccelZ = az * _accelRange;
+  _cachedGyroX = gx * _gyroRange;
+  _cachedGyroY = gy * _gyroRange;
+  _cachedGyroZ = gz * _gyroRange;
+
+  _cacheValid = true;
+}
+
+void DFRobot_ICM42688::getAllSensorData(float& accelX, float& accelY, float& accelZ,
+                                         float& gyroX, float& gyroY, float& gyroZ, float& temp)
+{
+  // Ensure we're on bank 0 (sensor data registers live in bank 0)
+  uint8_t bank = 0;
+  writeReg(ICM42688_REG_BANK_SEL, &bank, 1);
+
+  // Read all 14 bytes in one transaction
+  uint8_t data[14];
+  readReg(ICM42688_TEMP_DATA1, data, 14);
+
+  // Parse temperature
+  int16_t temp_raw = ((int16_t)data[0] << 8) | data[1];
+  temp = (temp_raw / 132.48f) + 25.0f;
+
+  // Parse accelerometer (big-endian int16)
+  int16_t ax = ((int16_t)data[2] << 8) | data[3];
+  int16_t ay = ((int16_t)data[4] << 8) | data[5];
+  int16_t az = ((int16_t)data[6] << 8) | data[7];
+
+  // Parse gyroscope (big-endian int16)
+  int16_t gx = ((int16_t)data[8] << 8) | data[9];
+  int16_t gy = ((int16_t)data[10] << 8) | data[11];
+  int16_t gz = ((int16_t)data[12] << 8) | data[13];
+
+  // Convert to physical units
+  accelX = ax * _accelRange;
+  accelY = ay * _accelRange;
+  accelZ = az * _accelRange;
+  gyroX = gx * _gyroRange;
+  gyroY = gy * _gyroRange;
+  gyroZ = gz * _gyroRange;
+}
+
 void DFRobot_ICM42688::sotpFIFOMode()
 {
   uint8_t bank = 0;
